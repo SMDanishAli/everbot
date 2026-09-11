@@ -2,7 +2,7 @@ import { AllocationResult } from '../../domain/entities/AllocationResult';
 
 export class AssignmentFormatter {
   static format(result: AllocationResult, strategyName: string): string {
-    const lines = [`Strategy: ${strategyName}`, `Client: ${result.clientId}`, `Hours requested: ${result.hoursRequested}`, ''];
+    const lines = [`Strategy: ${strategyName}`, `Hours requested: ${result.hoursRequested}`, ''];
 
     const counts = new Map<string, number>();
     for (const robot of result.assignedRobots) {

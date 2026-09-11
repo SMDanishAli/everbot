@@ -8,7 +8,7 @@ export class ClientRequest {
     public readonly clientId: string = 'default',
   ) {
     if (!Number.isInteger(hoursRequested) || hoursRequested <= 0) {
-      throw new Error('Client work hours must be a positive integer.');
+      throw new Error('Client work hours must be greater than 0');
     }
   }
 }

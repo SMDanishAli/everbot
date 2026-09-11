@@ -15,7 +15,7 @@ export class InventoryService {
   ) {}
 
   async getAvailableRobots(source?: RobotSource): Promise<Robot[]> {
-    const counts = await this.repository.getInventory();
+    const counts = await this.repository.getAvailableInventory();
     const filtered = source ? counts.filter((c) => c.source === source) : counts;
 
     const robots: Robot[] = [];

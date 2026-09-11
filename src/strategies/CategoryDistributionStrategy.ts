@@ -5,17 +5,12 @@ import { IAllocationStrategy } from './IAllocationStrategy';
 import { ZeroRobotsError, InsufficientCapacityError } from '../domain/errors';
 
 /**
- * Level 1: Category Distribution Strategy.
+ * L1 - Category Distribution Strategy.
  *
- * Primary goal (mandatory, not optional): include one robot from every
- * category that has availability, regardless of whether that's the most
- * efficient choice — this is what makes Level 1 more expensive than Level 2
- * for the same request (see spec's Level 1 vs Level 2 comparison).
- *
- * Secondary goal: once the mandatory base is assigned, cover any remaining
- * shortfall by repeatedly adding whichever available robot minimises excess
- * hours — or, if no single robot can close the gap yet, the one that
- * reduces the shortfall the most, and repeat.
+ * Include one robot from every category if feasible. 
+ * Robots should be available
+ * Robot hours provided ≥ hours requested
+ * Minimise excess hours
  */
 export class CategoryDistributionStrategy implements IAllocationStrategy {
   readonly name = 'Category Distribution (Level 1)';

@@ -6,11 +6,8 @@ import { RobotType } from '../../domain/entities/RobotType';
 import { RobotTypeRegistry } from '../config/RobotTypeRegistry';
 
 interface AllocationHistoryRow {
+  allocation_id: number;
   hours_requested: number;
-  assigned_robots_json: string;
-}
-
-interface SerializedRobot {
   type: string;
   source: RobotSource;
 }
@@ -22,23 +19,34 @@ export class SqliteAllocationHistoryRepository implements IAllocationHistoryRepo
   ) {}
 
   async save(result: AllocationResult, strategyName: string): Promise<void> {
-    const assignedRobotsJson = JSON.stringify(
-      result.assignedRobots.map((robot) => ({ type: robot.type.name, source: robot.source })),
-    );
+    const save = this.db.connection.transaction(() => {
+      const insert = this.db.connection.prepare(`
+        INSERT INTO allocation_history
+          (allocation_id, hours_requested, strategy_name, type, source, total_hours_provided, total_cost)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+      `);
+      let allocationId = -1;
 
-    this.db.connection
-      .prepare(
-        `INSERT INTO allocation_history
-          (hours_requested, strategy_name, assigned_robots_json, total_hours_provided, total_cost)
-         VALUES (?, ?, ?, ?, ?)`,
-      )
-      .run(
-        result.hoursRequested,
-        strategyName,
-        assignedRobotsJson,
-        result.totalHoursProvided,
-        result.totalCost,
-      );
+      for (const robot of result.assignedRobots) {
+        const row = insert.run(
+          allocationId,
+          result.hoursRequested,
+          strategyName,
+          robot.type.name,
+          robot.source,
+          result.totalHoursProvided,
+          result.totalCost,
+        );
+        if (allocationId === -1) {
+          allocationId = Number(row.lastInsertRowid);
+          this.db.connection
+            .prepare('UPDATE allocation_history SET allocation_id = ? WHERE id = ?')
+            .run(allocationId, allocationId);
+        }
+      }
+    });
+
+    save();
   }
 
   async findSince(isoTimestamp: string): Promise<AllocationResult[]> {
@@ -46,17 +54,26 @@ export class SqliteAllocationHistoryRepository implements IAllocationHistoryRepo
     // (recent/current-date lookups), unlike a client_id index which no query needs.
     const rows = this.db.connection
       .prepare(
-        'SELECT hours_requested, assigned_robots_json FROM allocation_history WHERE created_at >= ? ORDER BY created_at DESC',
+        `SELECT allocation_id, hours_requested, type, source
+         FROM allocation_history
+         WHERE created_at >= ?
+         ORDER BY created_at DESC, id DESC`,
       )
       .all(isoTimestamp) as AllocationHistoryRow[];
 
-    return rows.map((row) => {
-      const serializedRobots = JSON.parse(row.assigned_robots_json) as SerializedRobot[];
-      const robots = serializedRobots.map(
-        (sr) => new Robot(this.robotTypes.get(sr.type) as RobotType, sr.source),
+    const allocations = new Map<number, AllocationHistoryRow[]>();
+    for (const row of rows) {
+      const entries = allocations.get(row.allocation_id) ?? [];
+      entries.push(row);
+      allocations.set(row.allocation_id, entries);
+    }
+
+    return Array.from(allocations.values()).map((entries) => {
+      const first = entries[0];
+      const robots = entries.map(
+        (entry) => new Robot(this.robotTypes.get(entry.type) as RobotType, entry.source),
       );
-      // clientId isn't persisted (not needed — no query filters by it); placeholder on reconstruction.
-      return new AllocationResult('unknown', row.hours_requested, robots);
+      return new AllocationResult('unknown', first.hours_requested, robots);
     });
   }
 }

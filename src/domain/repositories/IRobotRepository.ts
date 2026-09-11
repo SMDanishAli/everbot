@@ -12,6 +12,7 @@ export interface RobotInventoryCount {
  */
 export interface IRobotRepository {
   getInventory(): Promise<RobotInventoryCount[]>;
+  getAvailableInventory(): Promise<RobotInventoryCount[]>;
   setInventory(counts: RobotInventoryCount[]): Promise<void>;
   clearInventory(): Promise<void>;
 

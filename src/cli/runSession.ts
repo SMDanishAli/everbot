@@ -26,7 +26,7 @@ export async function initInventory(): Promise<void> {
   try {
     new MigrationRunner(db, logger).run();
 
-    const robotRepository = new SqliteRobotRepository(db, logger);
+    const robotRepository = new SqliteRobotRepository(db, logger, config.inventory);
     await robotRepository.initInventory(config.inventory);
     console.log(InventoryFormatter.format(await robotRepository.getInventory(), 'Inventory Initialized'));
   } finally {
@@ -42,7 +42,7 @@ export async function showResources(): Promise<void> {
   try {
     new MigrationRunner(db, logger).run();
 
-    const inventory = await new SqliteRobotRepository(db, logger).getInventory();
+    const inventory = await new SqliteRobotRepository(db, logger, config.inventory).getAvailableInventory();
     if (inventory.length === 0) {
       console.info('No inventory found. Run "everbot init" to initialize the inventory.');
       return;
@@ -76,7 +76,7 @@ export async function resetInventory(hard = false): Promise<void> {
       dropTables();
       console.log('Hard reset completed. All SQL tables have been dropped.');
     } else {
-      const robotRepository = new SqliteRobotRepository(db, logger);
+      const robotRepository = new SqliteRobotRepository(db, logger, config.inventory);
       await robotRepository.clearInventory();
       console.log('Inventory reset successfully. All inventory has been removed.');
     }
@@ -139,8 +139,8 @@ export async function runSession(): Promise<void> {
   const db = new AppDatabase(config.database);
   new MigrationRunner(db, logger).run();
 
-  const robotRepository = new SqliteRobotRepository(db, logger);
-  const inventory = await robotRepository.getInventory();
+  const robotRepository = new SqliteRobotRepository(db, logger, config.inventory);
+  const inventory = await robotRepository.getAvailableInventory();
   const availableRobots = inventory.reduce((total, entry) => total + entry.available, 0);
   if (availableRobots === 0) {
     console.warn(
