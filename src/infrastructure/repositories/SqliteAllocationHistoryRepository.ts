@@ -18,6 +18,10 @@ export class SqliteAllocationHistoryRepository implements IAllocationHistoryRepo
     private readonly robotTypes: RobotTypeRegistry,
   ) {}
 
+  async clear(): Promise<void> {
+    this.db.connection.prepare('DELETE FROM allocation_history').run();
+  }
+
   async save(result: AllocationResult, strategyName: string): Promise<void> {
     const save = this.db.connection.transaction(() => {
       const insert = this.db.connection.prepare(`

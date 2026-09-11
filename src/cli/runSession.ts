@@ -34,7 +34,7 @@ export async function initInventory(): Promise<void> {
   }
 }
 
-export async function showResources(): Promise<void> {
+export async function showSummary(): Promise<void> {
   const config = ConfigLoader.load('./config.yaml');
   const logger = new PinoLogger(config.logging);
   const db = new AppDatabase(config.database);
@@ -51,15 +51,40 @@ export async function showResources(): Promise<void> {
       return;
     }
 
+    const robotSpecs = new Map(config.robots.map((robot) => [robot.name, robot]));
     console.log(
       InventoryFormatter.format(
         inventory.map((row) => ({
           ...row,
           total: totals.get(`${row.type}:${row.source}`) ?? row.available,
+          chargingCost:
+            ((totals.get(`${row.type}:${row.source}`) ?? row.available) - row.available) *
+            (robotSpecs.get(row.type)?.chargingCost ?? 0),
+          utilization: (() => {
+            const total = totals.get(`${row.type}:${row.source}`) ?? row.available;
+            return total === 0 ? 0 : ((total - row.available) / total) * 100;
+          })(),
         })),
         'Current Resources',
       ),
     );
+
+    let totalRobots = 0;
+    let availableRobots = 0;
+    let totalChargingCost = 0;
+
+    for (const row of inventory) {
+      const total = totals.get(`${row.type}:${row.source}`) ?? row.available;
+      const robot = robotSpecs.get(row.type);
+      totalRobots += total;
+      availableRobots += row.available;
+      totalChargingCost += (total - row.available) * (robot?.chargingCost ?? 0);
+    }
+
+    const utilization =
+      totalRobots === 0 ? 0 : ((totalRobots - availableRobots) / totalRobots) * 100;
+    console.log(`\nTotal charging cost: $${totalChargingCost}`);
+    console.log(`Average robot utilisation: ${utilization.toFixed(1)}%`);
   } finally {
     db.close();
   }
@@ -87,9 +112,12 @@ export async function resetInventory(hard = false): Promise<void> {
       dropTables();
       console.log('Hard reset completed. All SQL tables have been dropped.');
     } else {
-      const robotRepository = new SqliteRobotRepository(db, logger, config.inventory);
-      await robotRepository.clearInventory();
-      console.log('Inventory reset successfully. All inventory has been removed.');
+      const historyRepository = new SqliteAllocationHistoryRepository(
+        db,
+        new RobotTypeRegistry(config.robots),
+      );
+      await historyRepository.clear();
+      console.log('Reset completed. Allocation history has been cleared.');
     }
   } finally {
     db.close();

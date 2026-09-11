@@ -70,11 +70,6 @@ export class SqliteRobotRepository implements IRobotRepository {
     this.historyApplied = true;
   }
 
-  async clearInventory(): Promise<void> {
-    this.inventory = [];
-    this.historyApplied = true;
-  }
-
   async allocate(
     selections: Array<{ type: string; source: RobotSource; count: number }>,
   ): Promise<void> {
