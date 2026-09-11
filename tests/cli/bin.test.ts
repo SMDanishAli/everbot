@@ -3,7 +3,7 @@ const mockShowSummary = jest.fn().mockResolvedValue(undefined);
 const mockResetInventory = jest.fn().mockResolvedValue(undefined);
 const mockShowLogs = jest.fn();
 
-jest.mock('../../src/cli/runSession', () => ({
+jest.mock('../../src/cli/commandHandlers', () => ({
   runSession: mockRunSession,
   showSummary: mockShowSummary,
   resetInventory: mockResetInventory,

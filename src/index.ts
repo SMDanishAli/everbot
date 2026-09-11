@@ -1,4 +1,4 @@
-import { runSession } from './cli/runSession';
+import { runSession } from './cli/commandHandlers';
 
 /**
  * Entry-point of the application

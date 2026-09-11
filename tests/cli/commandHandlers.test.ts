@@ -129,7 +129,7 @@ import {
   runSession,
   showLogs,
   showSummary,
-} from '../../src/cli/runSession';
+} from '../../src/cli/commandHandlers';
 
 describe('runSession CLI workflows', () => {
   beforeEach(() => {

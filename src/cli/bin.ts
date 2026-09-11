@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { resetInventory, runSession, showLogs, showSummary } from './runSession';
+import { resetInventory, runSession, showLogs, showSummary } from './commandHandlers';
 
 /**
  * everbot <command>
