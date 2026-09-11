@@ -25,7 +25,6 @@ export class InventoryService {
         robots.push(new Robot(type, count.source));
       }
     }
-
     if (robots.length === 0) {
       throw new ZeroRobotsError();
     }

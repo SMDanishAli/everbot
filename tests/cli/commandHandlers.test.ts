@@ -280,8 +280,8 @@ describe('runSession CLI workflows', () => {
 
     await runSession();
 
-    expect(console.warn).toHaveBeenCalledWith(
-      'Warning: inventory is empty. Add inventory entries to config.yaml before starting a session.',
+    expect(console.error).toHaveBeenCalledWith(
+      'Inventory is empty. Add inventory entries to config.yaml before starting a session.',
     );
     expect(mockSelectPrompt).not.toHaveBeenCalled();
     expect(mockClose).toHaveBeenCalled();
@@ -297,8 +297,20 @@ describe('runSession CLI workflows', () => {
 
     expect(mockCliRun).toHaveBeenCalledWith(
       expect.objectContaining({ name: expectedName }),
+      expect.anything(),
     );
     expect(mockClose).toHaveBeenCalled();
+  });
+
+  it('passes the standby strategy for multi-client allocations', async () => {
+    mockSelectPrompt.mockResolvedValue('L1');
+
+    await runSession();
+
+    expect(mockCliRun).toHaveBeenCalledWith(
+      expect.objectContaining({ name: 'L1' }),
+      expect.objectContaining({ name: 'L3' }),
+    );
   });
 
   it('builds the L3 strategy with standby robots only', async () => {
@@ -314,6 +326,7 @@ describe('runSession CLI workflows', () => {
         name: 'L3',
         standby: [standbyRobot],
       }),
+      expect.anything(),
     );
   });
 

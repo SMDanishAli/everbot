@@ -16,7 +16,7 @@ export class CliController {
     private readonly logger: ILogger,
   ) {}
 
-  async run(strategy: IAllocationStrategy): Promise<void> {
+  async run(strategy: IAllocationStrategy, multiClientStrategy = strategy): Promise<void> {
     const rawHours = await prompt('Enter client work hours needed (comma-separated for multiple clients): ');
     const hourValues = rawHours.split(',').map((value) => Number(value.trim()));
 
@@ -35,8 +35,12 @@ export class CliController {
         const result = await this.allocationService.allocate(strategy, requests[0]);
         console.log(AssignmentFormatter.format(result, strategy.name));
       } else {
-        const results = await this.allocationService.allocateMany(strategy, requests);
-        console.log(results.map((result) => AssignmentFormatter.format(result, strategy.name)).join('\n\n'));
+        const results = await this.allocationService.allocateMany(multiClientStrategy, requests);
+        console.log(
+          results
+            .map((result) => AssignmentFormatter.format(result, multiClientStrategy.name))
+            .join('\n\n'),
+        );
       }
     } catch (err) {
       // Already logged inside AllocationService — just present it to the user here.

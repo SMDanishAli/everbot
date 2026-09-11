@@ -18,6 +18,7 @@ import { LogsFormatter, LogRecord } from './formatters/LogsFormatter';
 import { AllocationFormatter } from './formatters/AllocationFormatter';
 import { selectPrompt } from './prompts';
 import { RobotSource } from '../domain/entities/Robot';
+import { IAllocationStrategy } from '../strategies/IAllocationStrategy';
 
 export async function showSummary(): Promise<void> {
   const config = ConfigLoader.load('./config.yaml');
@@ -174,8 +175,8 @@ export async function runSession(): Promise<void> {
   const inventory = await robotRepository.getAvailableInventory();
   const availableRobots = inventory.reduce((total, entry) => total + entry.available, 0);
   if (availableRobots === 0) {
-    console.warn(
-      'Warning: inventory is empty. Add inventory entries to config.yaml before starting a session.',
+    console.error(
+      'Inventory is empty. Add inventory entries to config.yaml before starting a session.',
     );
     db.close();
     return;
@@ -183,13 +184,19 @@ export async function runSession(): Promise<void> {
 
   const historyRepository = new SqliteAllocationHistoryRepository(db);
   const inventoryService = new InventoryService(robotRepository, robotTypes);
+  const availableRobotsForMultiClient = await inventoryService.getAvailableRobots();
+  const multiClientStrategy = new StandbyActivationStrategy(
+    new CostOptimizedStrategy(),
+    availableRobotsForMultiClient.filter((robot) => robot.source === RobotSource.STANDBY),
+  );
+
   const strategyChoice = await selectPrompt('Choose an allocation strategy:', [
     { label: 'L1 - Category Distribution', value: 'L1' },
     { label: 'L2 - Cost Optimised', value: 'L2' },
     { label: 'L3 - Cost Optimised + Standby Activation', value: 'L3' },
   ]);
 
-  let strategy: CategoryDistributionStrategy | CostOptimizedStrategy | StandbyActivationStrategy;
+  let strategy: IAllocationStrategy
   switch (strategyChoice.toUpperCase()) {
     case 'L1':
       strategy = new CategoryDistributionStrategy();
@@ -198,11 +205,7 @@ export async function runSession(): Promise<void> {
       strategy = new CostOptimizedStrategy();
       break;
     case 'L3': {
-      const robots = await inventoryService.getAvailableRobots();
-      strategy = new StandbyActivationStrategy(
-        new CostOptimizedStrategy(),
-        robots.filter((robot) => robot.source === RobotSource.STANDBY),
-      );
+      strategy = multiClientStrategy;
       break;
     }
     default:
@@ -220,7 +223,7 @@ export async function runSession(): Promise<void> {
 
   const cli = new CliController(allocationService, logger);
 
-  await cli.run(strategy);
+  await cli.run(strategy, multiClientStrategy);
 
   db.close();
 }

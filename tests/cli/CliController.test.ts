@@ -66,9 +66,14 @@ describe('CliController', () => {
     service.allocateMany.mockResolvedValue(results);
     (prompt as jest.Mock).mockResolvedValue('12, 4');
 
-    await controller.run(strategy);
+    const multiClientStrategy: IAllocationStrategy = {
+      name: 'Multi-client strategy',
+      allocate: jest.fn(),
+    };
 
-    expect(service.allocateMany).toHaveBeenCalledWith(strategy, [
+    await controller.run(strategy, multiClientStrategy);
+
+    expect(service.allocateMany).toHaveBeenCalledWith(multiClientStrategy, [
       expect.objectContaining({ clientId: 'client-1', hoursRequested: 12 }),
       expect.objectContaining({ clientId: 'client-2', hoursRequested: 4 }),
     ]);
