@@ -18,7 +18,23 @@ everbot-win-x64.exe
 Download the binary for your platform and place it in a directory together with
 an external `config.yaml` (Check below for config spec):
 
-To run:
+From that directory, run the macOS or Linux binary with `./`:
+
+```bash
+cd /path/to/everbot
+chmod +x everbot-macos-x64.bin
+./everbot-macos-x64.bin run
+./everbot-macos-x64.bin allocation
+```
+
+Use the matching filename for your platform. `/everbot-macos-x64.bin` is
+interpreted as an absolute path from the filesystem root, while
+`./everbot-macos-x64.bin` means the binary in the current directory.
+
+If macOS blocks the downloaded binary, allow it in **System Settings >
+Privacy & Security**, then run the command again.
+
+For Linux, use:
 
 ```bash
 chmod +x everbot-linux-x64.bin
@@ -92,7 +108,61 @@ npm run format
 
 ## Architecture
 
-TBD
+The source is organized by responsibility:
+
+```text
+src/
+├── index.ts                         # application entry point
+├── cli/
+│   ├── bin.ts                        # command definitions
+│   ├── commandHandlers.ts            # composition root and command handlers
+│   ├── CliController.ts              # prompts and allocation interaction
+│   ├── prompts.ts
+│   └── formatters/                   # terminal output
+├── parsers/
+│   ├── ClientHoursParser.ts
+│   └── InputValidator.ts
+├── services/
+│   ├── AllocationService.ts
+│   ├── InventoryService.ts
+│   ├── AllocationComparator.ts
+│   ├── CostCalculator.ts
+│   └── UtilizationCalculator.ts
+├── strategies/
+│   ├── IAllocationStrategy.ts
+│   ├── CategoryDistributionStrategy.ts # L1
+│   ├── CostOptimizedStrategy.ts        # L2
+│   ├── StandbyActivationStrategy.ts    # L3
+│   └── MultiClientAllocator.ts
+├── domain/
+│   ├── entities/
+│   ├── errors/
+│   └── repositories/                  # repository interfaces
+└── infrastructure/
+    ├── config/
+    ├── db/
+    ├── logging/
+    └── repositories/
+```
+
+`src/cli/commandHandlers.ts` wires the concrete infrastructure together. It
+loads `config.yaml`, creates the logger and SQLite database, runs migrations,
+builds the in-memory inventory repository and services, selects the allocation
+strategy, and passes the resulting `AllocationService` to `CliController`.
+
+During `everbot run`, `CliController` parses the prompt input into
+`ClientRequest` objects. `AllocationService` asks `InventoryService` for
+available `Robot` objects, invokes the selected strategy, calls the repository
+to consume the assigned inventory, and writes one or more records to
+`allocation_history`. For multiple clients, `AllocationService` uses
+`MultiClientAllocator`, which owns depletion of the shared in-memory pool.
+
+The configured inventory is loaded into `SqliteRobotRepository` at startup and
+is held in memory for the process lifetime. SQLite stores allocation history,
+which is applied once on startup to calculate the available inventory. The
+database layer also provides migrations, WAL mode, and `busy_timeout`.
+Repository interfaces in `domain/repositories` keep services and strategies
+independent of the SQLite implementations.
 
 ## Design decisions
 
