@@ -14,7 +14,7 @@ export class ClientRequest {
     }
 
     if (!Number.isInteger(hoursRequested) || hoursRequested <= 0) {
-      throw new Error('Client work hours must be greater than 0');
+      throw new InvalidInputError('Client work hours must be greater than 0');
     }
   }
 }

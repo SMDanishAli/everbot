@@ -97,6 +97,17 @@ describe('CategoryDistributionStrategy', () => {
     expect(result.countByType('Bravo')).toBe(0);
   });
 
+  it('handles large same-type inventories by searching counts per type', () => {
+    const result = strategy.allocate(
+      pool({ bravo: 20, charlie: 20, delta: 20 }),
+      new ClientRequest(100),
+    );
+
+    expect(result.totalHoursProvided).toBe(100);
+    expect(result.assignedRobots.length).toBeLessThanOrEqual(20);
+    expect(result.assignedRobots.length).toBeGreaterThan(0);
+  });
+
   it('throws ZeroRobotsError when no robots are available', () => {
     expect(() => strategy.allocate([], new ClientRequest(10))).toThrow(ZeroRobotsError);
   });

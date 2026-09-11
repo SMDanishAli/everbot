@@ -10,6 +10,8 @@ import { ZeroRobotsError, InsufficientCapacityError } from '../domain/errors';
  * Minimises excess hours and, when tied, prefers allocations using more
  * categories. This keeps category diversity without forcing unnecessary robots
  * into small requests.
+ * Enumerates bounded counts per robot type, rather than individual robot
+ * subsets. With a fixed number of types this is polynomial in inventory size.
  */
 export class CategoryDistributionStrategy implements IAllocationStrategy {
   readonly name = 'Category Distribution (Level 1)';
@@ -29,6 +31,14 @@ export class CategoryDistributionStrategy implements IAllocationStrategy {
 
   private findBestSelection(robots: Robot[], requestedHours: number): Robot[] | null {
     let best: Robot[] | null = null;
+    const groups = Array.from(
+      robots.reduce((byType, robot) => {
+        const group = byType.get(robot.type.name) ?? [];
+        group.push(robot);
+        byType.set(robot.type.name, group);
+        return byType;
+      }, new Map<string, Robot[]>()),
+    );
 
     const consider = (selection: Robot[], totalHours: number): void => {
       if (totalHours < requestedHours) return;
@@ -50,17 +60,26 @@ export class CategoryDistributionStrategy implements IAllocationStrategy {
       }
     };
 
-    const search = (index: number, selection: Robot[], totalHours: number): void => {
-      if (index === robots.length) {
-        consider(selection, totalHours);
-        return;
+    let candidates: Array<{ selection: Robot[]; totalHours: number }> = [
+      { selection: [], totalHours: 0 },
+    ];
+    for (const [, group] of groups) {
+      const typeHours = group[0].workingHours;
+      const nextCandidates: Array<{ selection: Robot[]; totalHours: number }> = [];
+      for (const candidate of candidates) {
+        for (let count = 0; count <= group.length; count++) {
+          nextCandidates.push({
+            selection: candidate.selection.concat(group.slice(0, count)),
+            totalHours: candidate.totalHours + count * typeHours,
+          });
+        }
       }
+      candidates = nextCandidates;
+    }
 
-      search(index + 1, selection, totalHours);
-      search(index + 1, [...selection, robots[index]], totalHours + robots[index].workingHours);
-    };
-
-    search(0, [], 0);
+    for (const candidate of candidates) {
+      consider(candidate.selection, candidate.totalHours);
+    }
     return best;
   }
 }
