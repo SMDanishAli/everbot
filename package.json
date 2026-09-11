@@ -1,6 +1,6 @@
 {
   "name": "everbot",
-  "version": "1.0.7",
+  "version": "2.0.0",
   "description": "Terminal-based robot allocation system for EverBot Solutions",
   "main": "dist/index.js",
   "bin": {
