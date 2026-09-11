@@ -71,5 +71,6 @@ fi
 git add package.json package-lock.json
 git commit -m "Release ${tag}" -m "Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>"
 git tag -a "$tag" -m "Release ${tag}"
+git push origin "$current_branch" "$tag"
 
-echo "Created release ${tag} on ${current_branch}."
+echo "Created and pushed release ${tag} on ${current_branch}."
