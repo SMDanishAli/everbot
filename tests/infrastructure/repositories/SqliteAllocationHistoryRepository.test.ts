@@ -5,7 +5,6 @@ import { AppDatabase } from '../../../src/infrastructure/db/Database';
 import { MigrationRunner } from '../../../src/infrastructure/db/MigrationRunner';
 import { InMemoryLogger } from '../../../src/infrastructure/logging/InMemoryLogger';
 import { SqliteAllocationHistoryRepository } from '../../../src/infrastructure/repositories/SqliteAllocationHistoryRepository';
-import { RobotTypeRegistry } from '../../../src/infrastructure/config/RobotTypeRegistry';
 import { AllocationResult } from '../../../src/domain/entities/AllocationResult';
 import { Robot, RobotSource } from '../../../src/domain/entities/Robot';
 import { RobotType } from '../../../src/domain/entities/RobotType';
@@ -26,7 +25,6 @@ describe('SqliteAllocationHistoryRepository', () => {
     new MigrationRunner(database, logger).run();
     repository = new SqliteAllocationHistoryRepository(
       database,
-      new RobotTypeRegistry([{ name: 'Bravo', hours: 3, chargingCost: 2 }]),
     );
   });
 
@@ -52,19 +50,13 @@ describe('SqliteAllocationHistoryRepository', () => {
       { allocation_id: 1, type: 'Bravo', source: 'STANDBY' },
     ]);
 
-    const allocations = await repository.findSince('1970-01-01T00:00:00.000Z');
-    expect(allocations).toHaveLength(1);
-    expect(allocations[0].clientId).toBe('unknown');
-    expect(allocations[0].hoursRequested).toBe(5);
-    expect(allocations[0].assignedRobots.map((robot) => robot.source)).toEqual([
-      RobotSource.STANDBY,
-      RobotSource.ACTIVE,
-    ]);
   });
 
-  it('clears allocation history and handles empty results', async () => {
+  it('clears allocation history', async () => {
     await repository.clear();
-    expect(await repository.findSince('1970-01-01T00:00:00.000Z')).toEqual([]);
+    const rows = database.connection.prepare('SELECT * FROM allocation_history').all();
+
+    expect(rows).toEqual([]);
   });
 
   it('returns all history rows in reporting order', async () => {

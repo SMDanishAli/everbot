@@ -31,7 +31,6 @@ describe('AllocationService', () => {
     clear: jest.fn(),
     save: jest.fn(),
     findAll: jest.fn(),
-    findSince: jest.fn(),
   };
   const logger: jest.Mocked<ILogger> = {
     info: jest.fn(),

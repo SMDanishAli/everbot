@@ -82,10 +82,7 @@ export async function showAllocations(): Promise<void> {
 
   try {
     new MigrationRunner(db, logger).run();
-    const repository = new SqliteAllocationHistoryRepository(
-      db,
-      new RobotTypeRegistry(config.robots),
-    );
+    const repository = new SqliteAllocationHistoryRepository(db);
     const records = await repository.findAll();
     console.log(AllocationFormatter.format(records));
   } finally {
@@ -115,10 +112,7 @@ export async function resetInventory(hard = false): Promise<void> {
       dropTables();
       console.log('Hard reset completed. All SQL tables have been dropped.');
     } else {
-      const historyRepository = new SqliteAllocationHistoryRepository(
-        db,
-        new RobotTypeRegistry(config.robots),
-      );
+      const historyRepository = new SqliteAllocationHistoryRepository(db);
       await historyRepository.clear();
       console.log('Reset completed. Allocation history has been cleared.');
     }
@@ -187,7 +181,7 @@ export async function runSession(): Promise<void> {
     return;
   }
 
-  const historyRepository = new SqliteAllocationHistoryRepository(db, robotTypes);
+  const historyRepository = new SqliteAllocationHistoryRepository(db);
   const inventoryService = new InventoryService(robotRepository, robotTypes);
   const strategyChoice = await selectPrompt('Choose an allocation strategy:', [
     { label: 'L1 - Category Distribution', value: 'L1' },

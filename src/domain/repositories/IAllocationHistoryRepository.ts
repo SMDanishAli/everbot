@@ -7,8 +7,6 @@ export interface IAllocationHistoryRepository {
   /** Returns all persisted allocation-history rows for reporting. */
   findAll(): Promise<AllocationHistoryRecord[]>;
 
-  /** Returns allocation history rows created on or after the given ISO date/time. */
-  findSince(isoTimestamp: string): Promise<AllocationResult[]>;
 }
 
 export interface AllocationHistoryRecord {
