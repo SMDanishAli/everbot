@@ -2,7 +2,7 @@ import { runSession } from './cli/runSession';
 
 /**
  * Entry-point of the application
- * Used for concrete implementations and initialisations only  
+ * runSession will use concrete implementations and initialisations only  
  */
 async function main(): Promise<void> {
   await runSession();

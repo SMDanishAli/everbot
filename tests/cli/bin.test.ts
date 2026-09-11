@@ -1,12 +1,10 @@
 const mockRunSession = jest.fn().mockResolvedValue(undefined);
-const mockInitInventory = jest.fn().mockResolvedValue(undefined);
 const mockShowSummary = jest.fn().mockResolvedValue(undefined);
 const mockResetInventory = jest.fn().mockResolvedValue(undefined);
 const mockShowLogs = jest.fn();
 
 jest.mock('../../src/cli/runSession', () => ({
   runSession: mockRunSession,
-  initInventory: mockInitInventory,
   showSummary: mockShowSummary,
   resetInventory: mockResetInventory,
   showLogs: mockShowLogs,
@@ -38,14 +36,13 @@ describe('CLI command entrypoint', () => {
 
   it.each([
     ['run', 'runSession'],
-    ['init', 'initInventory'],
     ['summary', 'showSummary'],
     ['logs', 'showLogs'],
   ])('routes %s to %s', async (command, handler) => {
     await runCommand(command);
 
     expect(
-      { runSession: mockRunSession, initInventory: mockInitInventory, showSummary: mockShowSummary, showLogs: mockShowLogs }[
+      { runSession: mockRunSession, showSummary: mockShowSummary, showLogs: mockShowLogs }[
         handler
       ],
     ).toHaveBeenCalled();
@@ -67,6 +64,7 @@ describe('CLI command entrypoint', () => {
     await runCommand(...args);
 
     expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Usage: everbot <command>'));
+    expect(console.log).not.toHaveBeenCalledWith(expect.stringContaining('init'));
   });
 
   it('reports unknown commands and sets a failure exit code', async () => {

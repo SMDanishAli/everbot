@@ -18,22 +18,6 @@ import { LogsFormatter, LogRecord } from './formatters/LogsFormatter';
 import { selectPrompt } from './prompts';
 import { RobotSource } from '../domain/entities/Robot';
 
-export async function initInventory(): Promise<void> {
-  const config = ConfigLoader.load('./config.yaml');
-  const logger = new PinoLogger(config.logging);
-  const db = new AppDatabase(config.database);
-
-  try {
-    new MigrationRunner(db, logger).run();
-
-    const robotRepository = new SqliteRobotRepository(db, logger, config.inventory);
-    await robotRepository.initInventory(config.inventory);
-    console.log(InventoryFormatter.format(await robotRepository.getInventory(), 'Inventory Initialized'));
-  } finally {
-    db.close();
-  }
-}
-
 export async function showSummary(): Promise<void> {
   const config = ConfigLoader.load('./config.yaml');
   const logger = new PinoLogger(config.logging);
@@ -47,7 +31,7 @@ export async function showSummary(): Promise<void> {
       config.inventory.map(({ type, source, count }) => [`${type}:${source}`, count]),
     );
     if (inventory.length === 0) {
-      console.info('No inventory found. Run "everbot init" to initialize the inventory.');
+      console.info('No inventory found. Add inventory entries to config.yaml.');
       return;
     }
 
@@ -162,11 +146,6 @@ export function showLogs(): void {
 }
 
 /**
- * Composition root: the only place concrete implementations are constructed
- * and wired to abstractions. Everything below this function depends on
- * interfaces (IAllocationStrategy, ILogger, IRobotRepository, etc.), never
- * on this function or on each other's concrete classes.
- *
  * Invoked by `everbot run` (see cli/bin.ts).
  */
 export async function runSession(): Promise<void> {
@@ -183,7 +162,7 @@ export async function runSession(): Promise<void> {
   const availableRobots = inventory.reduce((total, entry) => total + entry.available, 0);
   if (availableRobots === 0) {
     console.warn(
-      'Warning: inventory is empty. Run "everbot init" to initialize the inventory before starting a session.',
+      'Warning: inventory is empty. Add inventory entries to config.yaml before starting a session.',
     );
     db.close();
     return;

@@ -17,7 +17,6 @@ const mockLoad = jest.fn(() => mockConfig);
 const mockClose = jest.fn();
 const mockMigrationRun = jest.fn();
 const mockGetInventory = jest.fn();
-const mockInitInventory = jest.fn();
 const mockGetAvailableInventory = jest.fn();
 const mockGetAvailableRobots = jest.fn();
 const mockClear = jest.fn();
@@ -62,7 +61,6 @@ jest.mock('../../src/infrastructure/db/MigrationRunner', () => ({
 jest.mock('../../src/infrastructure/repositories/SqliteRobotRepository', () => ({
   SqliteRobotRepository: class {
     getInventory = mockGetInventory;
-    initInventory = mockInitInventory;
     getAvailableInventory = mockGetAvailableInventory;
     getAvailableRobots = mockGetAvailableRobots;
   },
@@ -127,7 +125,6 @@ jest.mock('fs', () => ({
 }));
 
 import {
-  initInventory,
   resetInventory,
   runSession,
   showLogs,
@@ -157,26 +154,13 @@ describe('runSession CLI workflows', () => {
     jest.restoreAllMocks();
   });
 
-  it('initializes inventory, formats it, and closes the database', async () => {
-    await initInventory();
-
-    expect(mockMigrationRun).toHaveBeenCalled();
-    expect(mockInitInventory).toHaveBeenCalledWith(mockConfig.inventory);
-    expect(mockInventoryFormat).toHaveBeenCalledWith(
-      [{ type: 'Bravo', source: RobotSource.ACTIVE, available: 2 }],
-      'Inventory Initialized',
-    );
-    expect(console.log).toHaveBeenCalledWith('formatted inventory');
-    expect(mockClose).toHaveBeenCalled();
-  });
-
   it('reports an empty summary without formatting', async () => {
     mockGetAvailableInventory.mockResolvedValue([]);
 
     await showSummary();
 
     expect(console.info).toHaveBeenCalledWith(
-      'No inventory found. Run "everbot init" to initialize the inventory.',
+      'No inventory found. Add inventory entries to config.yaml.',
     );
     expect(mockInventoryFormat).not.toHaveBeenCalled();
     expect(mockClose).toHaveBeenCalled();
@@ -275,7 +259,7 @@ describe('runSession CLI workflows', () => {
     await runSession();
 
     expect(console.warn).toHaveBeenCalledWith(
-      'Warning: inventory is empty. Run "everbot init" to initialize the inventory before starting a session.',
+      'Warning: inventory is empty. Add inventory entries to config.yaml before starting a session.',
     );
     expect(mockSelectPrompt).not.toHaveBeenCalled();
     expect(mockClose).toHaveBeenCalled();
