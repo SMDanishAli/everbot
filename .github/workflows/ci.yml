@@ -5,6 +5,9 @@ on:
     tags:
       - '*'
 
+permissions:
+  contents: write
+
 jobs:
   lint-and-test:
     name: Lint and test
@@ -66,3 +69,9 @@ jobs:
           name: everbot-${{ github.ref_name }}
           path: artifacts/
           if-no-files-found: error
+
+      - name: Publish release assets
+        uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/*
+          generate_release_notes: true
