@@ -43,12 +43,23 @@ export async function showResources(): Promise<void> {
     new MigrationRunner(db, logger).run();
 
     const inventory = await new SqliteRobotRepository(db, logger, config.inventory).getAvailableInventory();
+    const totals = new Map(
+      config.inventory.map(({ type, source, count }) => [`${type}:${source}`, count]),
+    );
     if (inventory.length === 0) {
       console.info('No inventory found. Run "everbot init" to initialize the inventory.');
       return;
     }
 
-    console.log(InventoryFormatter.format(inventory, 'Current Resources'));
+    console.log(
+      InventoryFormatter.format(
+        inventory.map((row) => ({
+          ...row,
+          total: totals.get(`${row.type}:${row.source}`) ?? row.available,
+        })),
+        'Current Resources',
+      ),
+    );
   } finally {
     db.close();
   }
