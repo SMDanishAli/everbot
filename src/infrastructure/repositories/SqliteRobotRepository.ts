@@ -56,11 +56,6 @@ export class SqliteRobotRepository implements IRobotRepository {
     return this.inventory.map((row) => ({ ...row }));
   }
 
-  async setInventory(counts: RobotInventoryCount[]): Promise<void> {
-    this.inventory = counts.map((row) => ({ ...row }));
-    this.historyApplied = true;
-  }
-
   async allocate(
     selections: Array<{ type: string; source: RobotSource; count: number }>,
   ): Promise<void> {

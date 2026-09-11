@@ -8,7 +8,6 @@ describe('InventoryService', () => {
   const repository: jest.Mocked<IRobotRepository> = {
     getInventory: jest.fn(),
     getAvailableInventory: jest.fn(),
-    setInventory: jest.fn(),
     allocate: jest.fn(),
   };
   const registry = new RobotTypeRegistry([

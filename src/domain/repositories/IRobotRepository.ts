@@ -13,7 +13,6 @@ export interface RobotInventoryCount {
 export interface IRobotRepository {
   getInventory(): Promise<RobotInventoryCount[]>;
   getAvailableInventory(): Promise<RobotInventoryCount[]>;
-  setInventory(counts: RobotInventoryCount[]): Promise<void>;
 
   /**
    * Atomically checks availability and decrements it in one transaction.

@@ -72,14 +72,6 @@ describe('SqliteRobotRepository', () => {
     ]);
   });
 
-  it('sets inventory while marking history as applied', async () => {
-    const repository = createRepository();
-    await repository.setInventory([{ type: 'Delta', source: RobotSource.ACTIVE, available: 3 }]);
-    expect(await repository.getInventory()).toEqual([
-      { type: 'Delta', source: RobotSource.ACTIVE, available: 3 },
-    ]);
-  });
-
   it('allocates available robots atomically', async () => {
     const repository = createRepository();
 

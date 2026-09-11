@@ -24,7 +24,6 @@ describe('AllocationService', () => {
   const robotRepository: jest.Mocked<IRobotRepository> = {
     getInventory: jest.fn(),
     getAvailableInventory: jest.fn(),
-    setInventory: jest.fn(),
     allocate: jest.fn(),
   };
   const historyRepository: jest.Mocked<IAllocationHistoryRepository> = {
