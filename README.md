@@ -14,6 +14,86 @@ npm link        # makes `everbot` available globally, use sudo on dev
 everbot run
 ```
 
+## Using a packaged release
+
+Tagged releases publish platform-specific binaries as GitHub Release assets:
+
+```text
+everbot-linux-x64.bin
+everbot-macos-x64.bin
+everbot-win-x64.exe
+```
+
+Download the binary for your platform and place it in a directory together with
+an external `config.yaml`:
+
+```text
+everbot/
+├── everbot-linux-x64.bin
+├── config.yaml
+├── data/
+└── logs/
+```
+
+On Linux or macOS, make the binary executable and run it from that directory:
+
+```bash
+chmod +x everbot-linux-x64.bin
+./everbot-linux-x64.bin summary
+./everbot-linux-x64.bin run
+```
+
+On Windows, run the executable from PowerShell:
+
+```powershell
+.\everbot-win-x64.exe summary
+.\everbot-win-x64.exe run
+```
+
+The binary does not embed `config.yaml`. It loads `./config.yaml` from the
+current working directory each time it starts, so users can edit the file
+without rebuilding the binary. The database and log paths are also resolved
+relative to the current working directory unless absolute paths are configured.
+
+The configuration file defines robot specifications, inventory, logging, and
+database settings:
+
+```yaml
+robots:
+  - name: Bravo
+    hours: 3
+    chargingCost: 2
+
+inventory:
+  - type: Bravo
+    source: ACTIVE
+    count: 10
+  - type: Bravo
+    source: STANDBY
+    count: 2
+
+logging:
+  level: info
+  directory: ./logs
+  fileName: app.log
+  maxSizeMb: 5
+  maxFiles: 3
+
+database:
+  path: ./data/allocation.sqlite
+  busyTimeoutMs: 5000
+  walMode: true
+```
+
+After changing the configuration, restart the command for the changes to be
+loaded. Allocation history remains in the configured SQLite database, so it can
+continue to affect the `summary` command. Use `reset` to clear allocation
+history when required:
+
+```bash
+./everbot-linux-x64.bin reset
+```
+
 Development:
 
 ```bash
