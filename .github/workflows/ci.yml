@@ -58,10 +58,14 @@ jobs:
 
       - name: Cross-compile platform binaries
         run: |
-          mkdir -p artifacts
-          pkg dist/cli/bundle.js --target node18-linux-x64 --output artifacts/everbot-linux-x64.bin
-          pkg dist/cli/bundle.js --target node18-macos-x64 --output artifacts/everbot-macos-x64.bin
-          pkg dist/cli/bundle.js --target node18-win-x64 --output artifacts/everbot-win-x64.exe
+          mkdir -p "artifacts/Everbot (Linux)" "artifacts/Everbot (macOs)" "artifacts/Everbot (Windows)"
+          cp config.yaml "artifacts/Everbot (Linux)/config.yaml"
+          cp config.yaml "artifacts/Everbot (macOs)/config.yaml"
+          cp config.yaml "artifacts/Everbot (Windows)/config.yaml"
+          pkg dist/cli/bundle.js --assets "node_modules/better-sqlite3/build/Release/better_sqlite3.node" --target node18-linux-x64 --output "artifacts/Everbot (Linux)/everbot-linux-x64.bin"
+          pkg dist/cli/bundle.js --assets "node_modules/better-sqlite3/build/Release/better_sqlite3.node" --target node18-macos-x64 --output "artifacts/Everbot (macOs)/everbot-macos-x64.bin"
+          pkg dist/cli/bundle.js --assets "node_modules/better-sqlite3/build/Release/better_sqlite3.node" --target node18-win-x64 --output "artifacts/Everbot (Windows)/everbot-win-x64.exe"
+          chmod +x "artifacts/Everbot (Linux)/everbot-linux-x64.bin" "artifacts/Everbot (macOs)/everbot-macos-x64.bin"
 
       - name: Upload cross-platform artifacts
         uses: actions/upload-artifact@v4
@@ -73,5 +77,5 @@ jobs:
       - name: Publish release assets
         uses: softprops/action-gh-release@v2
         with:
-          files: artifacts/*
+          files: artifacts/**
           generate_release_notes: true

@@ -8,7 +8,7 @@
   },
   "scripts": {
     "build": "tsc && npm run copy:migrations && npm run chmod:bin && npm run bundle",
-    "bundle": "esbuild dist/cli/bin.js --bundle --platform=node --format=cjs --outfile=dist/cli/bundle.js",
+    "bundle": "esbuild dist/cli/bin.js --bundle --platform=node --format=cjs --external:better-sqlite3 --external:pino/lib/worker.js --external:pino-roll --external:pino-pretty --outfile=dist/cli/bundle.js",
     "copy:migrations": "mkdir -p dist/infrastructure/db/migrations && cp src/infrastructure/db/migrations/*.sql dist/infrastructure/db/migrations/",
     "chmod:bin": "chmod +x dist/cli/bin.js",
     "start": "node dist/index.js",
@@ -44,5 +44,32 @@
   },
   "engines": {
     "node": ">=18.0.0"
+  },
+  "pkg": {
+    "scripts": [
+      "node_modules/better-sqlite3/lib/**/*.js",
+      "node_modules/bindings/**/*.js"
+    ],
+    "assets": [
+      "node_modules/pino/lib/worker.js",
+      "node_modules/better-sqlite3/build/Release/better_sqlite3.node",
+      "node_modules/pino-roll/**/*",
+      "node_modules/pino-pretty/**/*",
+      "node_modules/pino-abstract-transport/**/*",
+      "node_modules/sonic-boom/**/*",
+      "node_modules/thread-stream/**/*",
+      "node_modules/colorette/**/*",
+      "node_modules/dateformat/**/*",
+      "node_modules/fast-copy/**/*",
+      "node_modules/fast-safe-stringify/**/*",
+      "node_modules/help-me/**/*",
+      "node_modules/joycon/**/*",
+      "node_modules/minimist/**/*",
+      "node_modules/on-exit-leak-free/**/*",
+      "node_modules/pump/**/*",
+      "node_modules/readable-stream/**/*",
+      "node_modules/secure-json-parse/**/*",
+      "node_modules/strip-json-comments/**/*"
+    ]
   }
 }

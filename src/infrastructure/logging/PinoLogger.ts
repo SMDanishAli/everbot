@@ -14,6 +14,15 @@ export class PinoLogger implements ILogger {
 
   constructor(config: LoggingConfig) {
     mkdirSync(config.directory, { recursive: true });
+    (
+      globalThis as typeof globalThis & {
+        __bundlerPathsOverrides?: Record<string, string>;
+      }
+    ).__bundlerPathsOverrides = {
+      'pino-worker': require.resolve('pino/lib/worker.js'),
+      'pino-roll': require.resolve('pino-roll'),
+      'pino-pretty': require.resolve('pino-pretty'),
+    };
 
     this.logger = pino({
       level: config.level,

@@ -11,17 +11,31 @@ cost optimization, standby activation, multi-client).
 Download platform-specific binaries from the latest release artifacts:
 
 ```text
-everbot-linux-x64.bin
-everbot-macos-x64.bin
-everbot-win-x64.exe
+Everbot (Linux)/
+├── everbot-linux-x64.bin
+└── config.yaml
+Everbot (macOs)/
+├── everbot-macos-x64.bin
+└── config.yaml
+Everbot (Windows)/
+├── everbot-win-x64.exe
+└── config.yaml
 ```
-Download the binary for your platform and place it in a directory together with
-an external `config.yaml` (Check below for config spec):
+Download the folder for your platform. The folder already contains the matching
+`config.yaml`; keep the executable and config file together. The paths in that
+config are relative to the platform folder:
 
-From that directory, run the macOS or Linux binary with `./`:
+```yaml
+logging:
+  directory: ./logs
+database:
+  path: ./data/allocation.sqlite
+```
+
+From inside the platform folder, run the macOS or Linux binary with `./`:
 
 ```bash
-cd /path/to/everbot
+cd "/path/to/Everbot (macOs)"
 chmod +x everbot-macos-x64.bin
 ./everbot-macos-x64.bin run
 ./everbot-macos-x64.bin allocation
@@ -37,6 +51,7 @@ Privacy & Security**, then run the command again.
 For Linux, use:
 
 ```bash
+cd "/path/to/Everbot (Linux)"
 chmod +x everbot-linux-x64.bin
 ./everbot-linux-x64.bin summary
 ./everbot-linux-x64.bin run
@@ -45,6 +60,7 @@ chmod +x everbot-linux-x64.bin
 On Windows, run the executable from PowerShell:
 
 ```powershell
+cd "C:\path\to\Everbot (Windows)"
 .\everbot-win-x64.exe summary
 .\everbot-win-x64.exe run
 .\everbot-win-x64.exe allocation
