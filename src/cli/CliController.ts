@@ -17,11 +17,12 @@ export class CliController {
   ) {}
 
   async run(strategy: IAllocationStrategy): Promise<void> {
-    const rawHours = await prompt('Enter client work hours needed: ');
+    const rawHours = await prompt('Enter client work hours needed (comma-separated for multiple clients): ');
+    const hourValues = rawHours.split(',').map((value) => Number(value.trim()));
 
-    let request: ClientRequest;
+    let requests: ClientRequest[];
     try {
-      request = new ClientRequest(Number(rawHours));
+      requests = hourValues.map((hours, index) => new ClientRequest(hours, `client-${index + 1}`));
     } catch (err) {
       // Not yet reached AllocationService, so this is the only place this error is logged.
       this.logger.warn('Invalid CLI input', { err, rawHours });
@@ -30,8 +31,13 @@ export class CliController {
     }
 
     try {
-      const result = await this.allocationService.allocate(strategy, request);
-      console.log(AssignmentFormatter.format(result, strategy.name));
+      if (requests.length === 1) {
+        const result = await this.allocationService.allocate(strategy, requests[0]);
+        console.log(AssignmentFormatter.format(result, strategy.name));
+      } else {
+        const results = await this.allocationService.allocateMany(strategy, requests);
+        console.log(results.map((result) => AssignmentFormatter.format(result, strategy.name)).join('\n\n'));
+      }
     } catch (err) {
       // Already logged inside AllocationService — just present it to the user here.
       console.error(ErrorFormatter.format(err));

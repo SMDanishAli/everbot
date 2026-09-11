@@ -6,6 +6,7 @@ import { IAllocationHistoryRepository } from '../domain/repositories/IAllocation
 import { InventoryService } from './InventoryService';
 import { DomainError } from '../domain/errors';
 import { ILogger } from '../infrastructure/logging/ILogger';
+import { MultiClientAllocator } from '../strategies/MultiClientAllocator';
 
 /**
  * Orchestrates a single allocation end-to-end: load inventory, run the given
@@ -41,14 +42,39 @@ export class AllocationService {
         this.logger.error('Allocation rejected', {
           code: err.code,
           message: err.message,
-          clientId: request.clientId,
         });
       } else {
         this.logger.error('Allocation failed (system error)', {
           err,
-          clientId: request.clientId,
         });
       }
+      throw err;
+    }
+  }
+
+  async allocateMany(
+    strategy: IAllocationStrategy,
+    requests: ClientRequest[],
+  ): Promise<AllocationResult[]> {
+    try {
+      const availableRobots = await this.inventoryService.getAvailableRobots();
+      const results = new MultiClientAllocator(strategy).allocateAll(availableRobots, requests);
+      const selections = results.flatMap((result) =>
+        result.assignedRobots.map((robot) => ({
+          type: robot.type.name,
+          source: robot.source,
+          count: 1,
+        })),
+      );
+
+      await this.robotRepository.allocate(selections);
+      for (const result of results) {
+        await this.historyRepository.save(result, strategy.name);
+      }
+
+      return results;
+    } catch (err) {
+      this.logger.error('Multi-client allocation failed', { err });
       throw err;
     }
   }
