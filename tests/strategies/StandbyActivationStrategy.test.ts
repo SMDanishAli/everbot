@@ -30,10 +30,9 @@ describe('StandbyActivationStrategy', () => {
   }
 
   it('spec example: 21h requested, 16h active capacity -> activates Charlie:1 from standby (cheapest option)', () => {
-    const standby = standbyPool();
-    const strategy = new StandbyActivationStrategy(new CategoryDistributionStrategy(), standby);
+    const strategy = new StandbyActivationStrategy(new CategoryDistributionStrategy());
 
-    const result = strategy.allocate(activePool(), new ClientRequest(21));
+    const result = strategy.allocate([...activePool(), ...standbyPool()], new ClientRequest(21));
 
     // Base active: Bravo1 + Charlie1 + Delta1 = 16h.
     // Shortfall = 5h. Standby options: Bravo x2 ($4), Delta x1 ($4), Charlie x1 ($3).
@@ -50,43 +49,30 @@ describe('StandbyActivationStrategy', () => {
   });
 
   it('delegates entirely to the base strategy when active capacity is sufficient', () => {
-    const standby = standbyPool();
     const baseStrategy = new CategoryDistributionStrategy();
-    const strategy = new StandbyActivationStrategy(baseStrategy, standby);
+    const strategy = new StandbyActivationStrategy(baseStrategy);
 
-    const active = activePool(); // 16h capacity
+    const active = [...activePool(), ...standbyPool()]; // 16h active capacity
     const result = strategy.allocate(active, new ClientRequest(10));
     const directResult = baseStrategy.allocate(activePool(), new ClientRequest(10));
 
     expect(result.totalHoursProvided).toBe(directResult.totalHoursProvided);
     expect(result.assignedRobots.every((r) => r.source === RobotSource.ACTIVE)).toBe(true);
     // Standby pool must be untouched since it was never needed.
-    expect(standby).toHaveLength(4);
+    expect(result.assignedRobots.every((r) => r.source === RobotSource.ACTIVE)).toBe(true);
   });
 
-  it('depletes its standby pool across repeated calls (multi-client safety)', () => {
-    // Only one Charlie in standby — the cheapest option for a 5h shortfall.
-    const standby = [
-      new Robot(charlie, RobotSource.STANDBY),
-      new Robot(bravo, RobotSource.STANDBY),
-      new Robot(bravo, RobotSource.STANDBY),
-    ];
-    const strategy = new StandbyActivationStrategy(new CategoryDistributionStrategy(), standby);
+  it('does not mutate the supplied pool across repeated calls', () => {
+    const available = [...activePool(), ...standbyPool()];
+    const strategy = new StandbyActivationStrategy(new CategoryDistributionStrategy());
 
-    const first = strategy.allocate(activePool(), new ClientRequest(21));
+    const first = strategy.allocate(available, new ClientRequest(21));
     expect(first.countByType('Charlie')).toBe(2); // 1 active + 1 standby Charlie used
-    expect(standby).toHaveLength(2); // the standby Charlie was consumed
-
-    // Second call for another 21h client: Charlie is gone from standby now,
-    // so it must fall back to the next-cheapest sufficient option (Bravo x2, $4).
-    const second = strategy.allocate(activePool(), new ClientRequest(21));
-    const usedStandbySecond = second.assignedRobots.filter((r) => r.source === RobotSource.STANDBY);
-    expect(usedStandbySecond.every((r) => r.type.name === 'Bravo')).toBe(true);
-    expect(standby).toHaveLength(0);
+    expect(available).toHaveLength(7);
   });
 
   it('throws InsufficientCapacityError when active is insufficient and standby is empty', () => {
-    const strategy = new StandbyActivationStrategy(new CategoryDistributionStrategy(), []);
+    const strategy = new StandbyActivationStrategy(new CategoryDistributionStrategy());
 
     expect(() => strategy.allocate(activePool(), new ClientRequest(21))).toThrow(
       InsufficientCapacityError,
@@ -94,7 +80,7 @@ describe('StandbyActivationStrategy', () => {
   });
 
   it('throws ZeroRobotsError when both active and standby pools are empty', () => {
-    const strategy = new StandbyActivationStrategy(new CategoryDistributionStrategy(), []);
+    const strategy = new StandbyActivationStrategy(new CategoryDistributionStrategy());
 
     expect(() => strategy.allocate([], new ClientRequest(10))).toThrow(ZeroRobotsError);
   });

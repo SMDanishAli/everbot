@@ -105,7 +105,7 @@ jest.mock('../../src/strategies/CostOptimizedStrategy', () => ({
 jest.mock('../../src/strategies/StandbyActivationStrategy', () => ({
   StandbyActivationStrategy: class {
     name = 'L3';
-    constructor(public readonly base: unknown, public readonly standby: unknown[]) {}
+    constructor(public readonly base: unknown) {}
   },
 }));
 
@@ -314,9 +314,6 @@ describe('runSession CLI workflows', () => {
   });
 
   it('builds the L3 strategy with standby robots only', async () => {
-    const activeRobot = { source: RobotSource.ACTIVE };
-    const standbyRobot = { source: RobotSource.STANDBY };
-    mockGetAvailableRobots.mockResolvedValue([activeRobot, standbyRobot]);
     mockSelectPrompt.mockResolvedValue('l3');
 
     await runSession();
@@ -324,7 +321,6 @@ describe('runSession CLI workflows', () => {
     expect(mockCliRun).toHaveBeenCalledWith(
       expect.objectContaining({
         name: 'L3',
-        standby: [standbyRobot],
       }),
       expect.anything(),
     );

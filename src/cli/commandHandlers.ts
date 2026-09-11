@@ -17,7 +17,6 @@ import { InventoryFormatter } from './formatters/InventoryFormatter';
 import { LogsFormatter, LogRecord } from './formatters/LogsFormatter';
 import { AllocationFormatter } from './formatters/AllocationFormatter';
 import { selectPrompt } from './prompts';
-import { RobotSource } from '../domain/entities/Robot';
 import { IAllocationStrategy } from '../strategies/IAllocationStrategy';
 
 export async function showSummary(): Promise<void> {
@@ -184,11 +183,7 @@ export async function runSession(): Promise<void> {
 
   const historyRepository = new SqliteAllocationHistoryRepository(db);
   const inventoryService = new InventoryService(robotRepository, robotTypes);
-  const availableRobotsForMultiClient = await inventoryService.getAvailableRobots();
-  const multiClientStrategy = new StandbyActivationStrategy(
-    new CostOptimizedStrategy(),
-    availableRobotsForMultiClient.filter((robot) => robot.source === RobotSource.STANDBY),
-  );
+  const multiClientStrategy = new StandbyActivationStrategy(new CostOptimizedStrategy());
 
   const strategyChoice = await selectPrompt('Choose an allocation strategy:', [
     { label: 'L1 - Category Distribution', value: 'L1' },
@@ -205,7 +200,7 @@ export async function runSession(): Promise<void> {
       strategy = new CostOptimizedStrategy();
       break;
     case 'L3': {
-      strategy = multiClientStrategy;
+      strategy = new StandbyActivationStrategy(new CostOptimizedStrategy());
       break;
     }
     default:
