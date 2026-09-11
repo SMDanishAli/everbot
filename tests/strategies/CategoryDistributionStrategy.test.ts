@@ -86,6 +86,17 @@ describe('CategoryDistributionStrategy', () => {
     expect(result.totalHoursProvided).toBeGreaterThanOrEqual(5);
   });
 
+  it('prefers fewer robots when excess and category diversity are tied', () => {
+    const echo = new RobotType('Echo', 6, 1);
+    const result = strategy.allocate(
+      [new Robot(bravo), new Robot(bravo), new Robot(echo)],
+      new ClientRequest(6),
+    );
+
+    expect(result.countByType('Echo')).toBe(1);
+    expect(result.countByType('Bravo')).toBe(0);
+  });
+
   it('throws ZeroRobotsError when no robots are available', () => {
     expect(() => strategy.allocate([], new ClientRequest(10))).toThrow(ZeroRobotsError);
   });

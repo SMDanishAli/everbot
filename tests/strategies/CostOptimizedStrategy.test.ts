@@ -65,4 +65,14 @@ describe('CostOptimizedStrategy', () => {
       InsufficientCapacityError,
     );
   });
+
+  it('uses the defensive insufficient-capacity fallback when no DP state is reachable', () => {
+    const solve = (
+      strategy as unknown as {
+        solveMinCostKnapsack(robots: Robot[], hoursRequested: number, range: number): Robot[];
+      }
+    ).solveMinCostKnapsack.bind(strategy);
+
+    expect(() => solve([], 1, 1)).toThrow(InsufficientCapacityError);
+  });
 });

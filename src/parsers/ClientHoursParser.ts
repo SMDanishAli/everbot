@@ -10,7 +10,21 @@ import { InvalidInputError } from '../domain/errors';
  * empty input, non-numeric tokens, negative/zero values.
  */
 export class ClientHoursParser {
-  static parse(_raw: string): ClientRequest[] {
-    throw new InvalidInputError('Not implemented — write a failing test first.');
+  static parse(raw: string): ClientRequest[] {
+    const tokens = raw.trim().split(/[,\s]+/).filter(Boolean);
+    if (tokens.length === 0) {
+      throw new InvalidInputError('At least one client work-hours value is required.');
+    }
+
+    return tokens.map((token, index) => {
+      const hours = Number(token);
+      if (!Number.isInteger(hours) || hours <= 0) {
+        throw new InvalidInputError(
+          `Client ${index + 1} work hours must be a positive integer.`,
+        );
+      }
+
+      return new ClientRequest(hours, `client-${index + 1}`);
+    });
   }
 }

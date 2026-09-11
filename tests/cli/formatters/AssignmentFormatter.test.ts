@@ -27,4 +27,22 @@ describe('AssignmentFormatter', () => {
 
     expect(AssignmentFormatter.format(result, 'Test strategy')).toContain('Excess hours');
   });
+
+  it('shows None when no robots are assigned', () => {
+    const result = new AllocationResult('client-1', 1, []);
+
+    expect(AssignmentFormatter.format(result, 'Test strategy')).toContain('None');
+  });
+
+  it('adds colors to highlighted values in a TTY', () => {
+    Object.defineProperty(process.stdout, 'isTTY', { configurable: true, value: true });
+    const result = new AllocationResult('client-1', 10, [new Robot(delta), new Robot(bravo)]);
+
+    const output = AssignmentFormatter.format(result, 'Test strategy');
+
+    expect(output).toContain('\x1b[34m');
+    expect(output).toContain('\x1b[31m');
+    expect(output).toContain('\x1b[32m');
+    Object.defineProperty(process.stdout, 'isTTY', { configurable: true, value: false });
+  });
 });

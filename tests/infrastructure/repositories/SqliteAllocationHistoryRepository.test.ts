@@ -1,0 +1,69 @@
+import { mkdtempSync, rmSync } from 'fs';
+import { join } from 'path';
+import { tmpdir } from 'os';
+import { AppDatabase } from '../../../src/infrastructure/db/Database';
+import { MigrationRunner } from '../../../src/infrastructure/db/MigrationRunner';
+import { InMemoryLogger } from '../../../src/infrastructure/logging/InMemoryLogger';
+import { SqliteAllocationHistoryRepository } from '../../../src/infrastructure/repositories/SqliteAllocationHistoryRepository';
+import { RobotTypeRegistry } from '../../../src/infrastructure/config/RobotTypeRegistry';
+import { AllocationResult } from '../../../src/domain/entities/AllocationResult';
+import { Robot, RobotSource } from '../../../src/domain/entities/Robot';
+import { RobotType } from '../../../src/domain/entities/RobotType';
+
+describe('SqliteAllocationHistoryRepository', () => {
+  let directory: string;
+  let database: AppDatabase;
+  let repository: SqliteAllocationHistoryRepository;
+
+  beforeEach(() => {
+    directory = mkdtempSync(join(tmpdir(), 'everbot-history-'));
+    database = new AppDatabase({
+      path: join(directory, 'allocation.sqlite'),
+      busyTimeoutMs: 5000,
+      walMode: false,
+    });
+    const logger = new InMemoryLogger();
+    new MigrationRunner(database, logger).run();
+    repository = new SqliteAllocationHistoryRepository(
+      database,
+      new RobotTypeRegistry([{ name: 'Bravo', hours: 3, chargingCost: 2 }]),
+    );
+  });
+
+  afterEach(() => {
+    database.close();
+    rmSync(directory, { recursive: true, force: true });
+  });
+
+  it('saves one row per robot and reconstructs grouped allocations', async () => {
+    const bravo = new RobotType('Bravo', 3, 2);
+    const result = new AllocationResult('client-1', 5, [
+      new Robot(bravo, RobotSource.ACTIVE),
+      new Robot(bravo, RobotSource.STANDBY),
+    ]);
+
+    await repository.save(result, 'Test strategy');
+
+    const rows = database.connection
+      .prepare('SELECT allocation_id, type, source FROM allocation_history')
+      .all();
+    expect(rows).toEqual([
+      { allocation_id: 1, type: 'Bravo', source: 'ACTIVE' },
+      { allocation_id: 1, type: 'Bravo', source: 'STANDBY' },
+    ]);
+
+    const allocations = await repository.findSince('1970-01-01T00:00:00.000Z');
+    expect(allocations).toHaveLength(1);
+    expect(allocations[0].clientId).toBe('unknown');
+    expect(allocations[0].hoursRequested).toBe(5);
+    expect(allocations[0].assignedRobots.map((robot) => robot.source)).toEqual([
+      RobotSource.STANDBY,
+      RobotSource.ACTIVE,
+    ]);
+  });
+
+  it('clears allocation history and handles empty results', async () => {
+    await repository.clear();
+    expect(await repository.findSince('1970-01-01T00:00:00.000Z')).toEqual([]);
+  });
+});
