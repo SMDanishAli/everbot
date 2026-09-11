@@ -32,19 +32,18 @@ describe('CategoryDistributionStrategy', () => {
     expect(result.excessHours).toBe(0);
   });
 
-  it('spec example: 17h requested -> extra Bravo minimises excess', () => {
+  it('spec example: 17h requested -> extra Charlie minimises excess', () => {
     const result = strategy.allocate(
       pool({ bravo: 2, charlie: 3, delta: 2 }),
       new ClientRequest(17),
     );
 
-    // base (Bravo1+Charlie1+Delta1=16h) + one extra Bravo (3h) = 19h, excess 2.
-    // Charlie(+5=21,excess4) and Delta(+8=24,excess7) would both overshoot more.
-    expect(result.countByType('Bravo')).toBe(2);
-    expect(result.countByType('Charlie')).toBe(1);
+    // One Delta plus two Charlies gives 18h, which has only 1h excess.
+    expect(result.countByType('Bravo')).toBe(0);
+    expect(result.countByType('Charlie')).toBe(2);
     expect(result.countByType('Delta')).toBe(1);
-    expect(result.totalHoursProvided).toBe(19);
-    expect(result.excessHours).toBe(2);
+    expect(result.totalHoursProvided).toBe(18);
+    expect(result.excessHours).toBe(1);
   });
 
   it('spec example: 21h requested -> extra Charlie gives an exact match', () => {
