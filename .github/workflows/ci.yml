@@ -49,3 +49,20 @@ jobs:
 
       - name: Build
         run: npm run build
+
+      - name: Install pkg
+        run: npm install --global pkg@5.8.1
+
+      - name: Cross-compile platform binaries
+        run: |
+          mkdir -p artifacts
+          pkg dist/cli/bin.js --target node20-linux-x64 --output artifacts/everbot-linux-x64
+          pkg dist/cli/bin.js --target node20-macos-x64 --output artifacts/everbot-macos-x64
+          pkg dist/cli/bin.js --target node20-win-x64 --output artifacts/everbot-win-x64.exe
+
+      - name: Upload cross-platform artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: everbot-${{ github.ref_name }}
+          path: artifacts/
+          if-no-files-found: error
