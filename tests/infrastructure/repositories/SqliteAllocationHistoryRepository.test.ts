@@ -66,4 +66,25 @@ describe('SqliteAllocationHistoryRepository', () => {
     await repository.clear();
     expect(await repository.findSince('1970-01-01T00:00:00.000Z')).toEqual([]);
   });
+
+  it('returns all history rows in reporting order', async () => {
+    await repository.save(
+      new AllocationResult('client-1', 3, [new Robot(new RobotType('Bravo', 3, 2))]),
+      'Test strategy',
+    );
+
+    await expect(repository.findAll()).resolves.toEqual([
+      expect.objectContaining({
+        id: 1,
+        allocationId: 1,
+        hoursRequested: 3,
+        strategyName: 'Test strategy',
+        type: 'Bravo',
+        source: RobotSource.ACTIVE,
+        totalHoursProvided: 3,
+        totalCost: 2,
+        createdAt: expect.any(String),
+      }),
+    ]);
+  });
 });

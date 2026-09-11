@@ -30,6 +30,7 @@ describe('AllocationService', () => {
   const historyRepository: jest.Mocked<IAllocationHistoryRepository> = {
     clear: jest.fn(),
     save: jest.fn(),
+    findAll: jest.fn(),
     findSince: jest.fn(),
   };
   const logger: jest.Mocked<ILogger> = {

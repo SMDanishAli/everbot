@@ -24,12 +24,14 @@ To run:
 chmod +x everbot-linux-x64.bin
 ./everbot-linux-x64.bin summary
 ./everbot-linux-x64.bin run
+./everbot-linux-x64.bin allocation
 ```
 On Windows, run the executable from PowerShell:
 
 ```powershell
 .\everbot-win-x64.exe summary
 .\everbot-win-x64.exe run
+.\everbot-win-x64.exe allocation
 ```
 
 ### 2. Developer's Setup
@@ -111,4 +113,3 @@ TBD
 - **SQLite via `better-sqlite3`** — WAL mode + `busy_timeout` so multiple CLI instances
   run concurrently without corrupting data; inventory allocation is wrapped in a single
   transaction (atomic read-check-write) to prevent race conditions.
-

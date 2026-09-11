@@ -1,11 +1,12 @@
 #!/usr/bin/env node
 
-import { resetInventory, runSession, showLogs, showSummary } from './commandHandlers';
+import { resetInventory, runSession, showAllocations, showLogs, showSummary } from './commandHandlers';
 
 /**
  * everbot <command>
  *
  *   run    Start an allocation session
+ *   allocation Show allocation history
  *   summary Show current inventory and utilization
  *   reset  Remove all inventory
  *   logs   Show application logs
@@ -24,6 +25,10 @@ async function main(): Promise<void> {
 
     case 'summary':
       await showSummary();
+      break;
+
+    case 'allocation':
+      await showAllocations();
       break;
 
     case 'reset':
@@ -54,6 +59,7 @@ function printUsage(): void {
       '',
       'Commands:',
       '  run      Start an allocation session',
+      '  allocation Show allocation history',
       '  summary  Show current inventory and utilization',
       '  reset    Remove all inventory (use --hard to drop all SQL tables)',
       '  logs     Show application logs',

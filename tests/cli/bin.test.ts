@@ -1,10 +1,12 @@
 const mockRunSession = jest.fn().mockResolvedValue(undefined);
+const mockShowAllocations = jest.fn().mockResolvedValue(undefined);
 const mockShowSummary = jest.fn().mockResolvedValue(undefined);
 const mockResetInventory = jest.fn().mockResolvedValue(undefined);
 const mockShowLogs = jest.fn();
 
 jest.mock('../../src/cli/commandHandlers', () => ({
   runSession: mockRunSession,
+  showAllocations: mockShowAllocations,
   showSummary: mockShowSummary,
   resetInventory: mockResetInventory,
   showLogs: mockShowLogs,
@@ -36,13 +38,19 @@ describe('CLI command entrypoint', () => {
 
   it.each([
     ['run', 'runSession'],
+    ['allocation', 'showAllocations'],
     ['summary', 'showSummary'],
     ['logs', 'showLogs'],
   ])('routes %s to %s', async (command, handler) => {
     await runCommand(command);
 
     expect(
-      { runSession: mockRunSession, showSummary: mockShowSummary, showLogs: mockShowLogs }[
+      {
+        runSession: mockRunSession,
+        showAllocations: mockShowAllocations,
+        showSummary: mockShowSummary,
+        showLogs: mockShowLogs,
+      }[
         handler
       ],
     ).toHaveBeenCalled();

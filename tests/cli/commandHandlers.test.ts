@@ -18,6 +18,7 @@ const mockClose = jest.fn();
 const mockMigrationRun = jest.fn();
 const mockGetInventory = jest.fn();
 const mockGetAvailableInventory = jest.fn();
+const mockFindAll = jest.fn();
 const mockGetAvailableRobots = jest.fn();
 const mockClear = jest.fn();
 const mockCliRun = jest.fn();
@@ -69,6 +70,7 @@ jest.mock('../../src/infrastructure/repositories/SqliteRobotRepository', () => (
 jest.mock('../../src/infrastructure/repositories/SqliteAllocationHistoryRepository', () => ({
   SqliteAllocationHistoryRepository: class {
     clear = mockClear;
+    findAll = mockFindAll;
   },
 }));
 
@@ -119,6 +121,12 @@ jest.mock('../../src/cli/formatters/LogsFormatter', () => ({
   LogsFormatter: { format: mockLogsFormat },
 }));
 
+const mockAllocationFormat = jest.fn(() => 'formatted allocations');
+
+jest.mock('../../src/cli/formatters/AllocationFormatter', () => ({
+  AllocationFormatter: { format: mockAllocationFormat },
+}));
+
 jest.mock('fs', () => ({
   readdirSync: mockReaddirSync,
   readFileSync: mockReadFileSync,
@@ -126,6 +134,7 @@ jest.mock('fs', () => ({
 
 import {
   resetInventory,
+  showAllocations,
   runSession,
   showLogs,
   showSummary,
@@ -142,12 +151,25 @@ describe('runSession CLI workflows', () => {
     mockGetAvailableInventory.mockResolvedValue([
       { type: 'Bravo', source: RobotSource.ACTIVE, available: 1 },
     ]);
+    mockFindAll.mockResolvedValue([]);
     mockGetAvailableRobots.mockResolvedValue([]);
     mockSelectPrompt.mockResolvedValue('L1');
     mockConnection.prepare.mockReturnValue({ all: jest.fn(() => []) });
     mockConnection.transaction.mockImplementation((callback: () => void) => callback);
     mockReaddirSync.mockReturnValue([]);
     mockReadFileSync.mockReturnValue('');
+  });
+
+  it('formats allocation history and closes the database', async () => {
+    const records = [{ id: 1, allocationId: 1 }];
+    mockFindAll.mockResolvedValue(records);
+
+    await showAllocations();
+
+    expect(mockFindAll).toHaveBeenCalled();
+    expect(mockAllocationFormat).toHaveBeenCalledWith(records);
+    expect(console.log).toHaveBeenCalledWith('formatted allocations');
+    expect(mockClose).toHaveBeenCalled();
   });
 
   afterEach(() => {
@@ -159,7 +181,7 @@ describe('runSession CLI workflows', () => {
 
     await showSummary();
 
-    expect(console.info).toHaveBeenCalledWith(
+    expect(console.error).toHaveBeenCalledWith(
       'No inventory found. Add inventory entries to config.yaml.',
     );
     expect(mockInventoryFormat).not.toHaveBeenCalled();

@@ -15,6 +15,7 @@ import { StandbyActivationStrategy } from '../strategies/StandbyActivationStrate
 import { CliController } from './CliController';
 import { InventoryFormatter } from './formatters/InventoryFormatter';
 import { LogsFormatter, LogRecord } from './formatters/LogsFormatter';
+import { AllocationFormatter } from './formatters/AllocationFormatter';
 import { selectPrompt } from './prompts';
 import { RobotSource } from '../domain/entities/Robot';
 
@@ -31,7 +32,7 @@ export async function showSummary(): Promise<void> {
       config.inventory.map(({ type, source, count }) => [`${type}:${source}`, count]),
     );
     if (inventory.length === 0) {
-      console.info('No inventory found. Add inventory entries to config.yaml.');
+      console.error('No inventory found. Add inventory entries to config.yaml.');
       return;
     }
 
@@ -69,6 +70,24 @@ export async function showSummary(): Promise<void> {
       totalRobots === 0 ? 0 : ((totalRobots - availableRobots) / totalRobots) * 100;
     console.log(`\nTotal charging cost: $${totalChargingCost}`);
     console.log(`Average robot utilisation: ${utilization.toFixed(1)}%`);
+  } finally {
+    db.close();
+  }
+}
+
+export async function showAllocations(): Promise<void> {
+  const config = ConfigLoader.load('./config.yaml');
+  const logger = new PinoLogger(config.logging);
+  const db = new AppDatabase(config.database);
+
+  try {
+    new MigrationRunner(db, logger).run();
+    const repository = new SqliteAllocationHistoryRepository(
+      db,
+      new RobotTypeRegistry(config.robots),
+    );
+    const records = await repository.findAll();
+    console.log(AllocationFormatter.format(records));
   } finally {
     db.close();
   }
