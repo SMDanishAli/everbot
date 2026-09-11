@@ -105,6 +105,20 @@ describe('AllocationService', () => {
 
     await expect(service().allocateMany(strategy, [request])).rejects.toBe(error);
 
-    expect(logger.error).toHaveBeenCalledWith('Multi-client allocation failed', { err: error });
+    expect(logger.error).toHaveBeenCalledWith('Multi-client allocation failed (system error)', {
+      err: error,
+    });
+  });
+
+  it('logs multi-client domain errors as allocation rejections', async () => {
+    const error = new ZeroRobotsError();
+    inventoryService.getAvailableRobots.mockRejectedValue(error);
+
+    await expect(service().allocateMany(strategy, [request])).rejects.toBe(error);
+
+    expect(logger.error).toHaveBeenCalledWith('Multi-client allocation rejected', {
+      code: error.code,
+      message: error.message,
+    });
   });
 });

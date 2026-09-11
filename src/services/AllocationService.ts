@@ -11,8 +11,8 @@ import { MultiClientAllocator } from '../strategies/MultiClientAllocator';
 /**
  * Orchestrates a single allocation end-to-end: load inventory, run the given
  * strategy, persist the result + updated inventory, log the outcome.
- * Logs at the boundary where the error is caught — logical errors at 'warn',
- * everything else at 'error' — so failures are recorded exactly once.
+ * Logs at the boundary where the error is caught, distinguishing expected
+ * domain rejections from unexpected system failures.
  */
 export class AllocationService {
   constructor(
@@ -38,16 +38,7 @@ export class AllocationService {
 
       return result;
     } catch (err) {
-      if (err instanceof DomainError) {
-        this.logger.error('Allocation rejected', {
-          code: err.code,
-          message: err.message,
-        });
-      } else {
-        this.logger.error('Allocation failed (system error)', {
-          err,
-        });
-      }
+      this.logAllocationError(err, 'Allocation');
       throw err;
     }
   }
@@ -74,8 +65,19 @@ export class AllocationService {
 
       return results;
     } catch (err) {
-      this.logger.error('Multi-client allocation failed', { err });
+      this.logAllocationError(err, 'Multi-client allocation');
       throw err;
+    }
+  }
+
+  private logAllocationError(err: unknown, context: string): void {
+    if (err instanceof DomainError) {
+      this.logger.error(`${context} rejected`, {
+        code: err.code,
+        message: err.message,
+      });
+    } else {
+      this.logger.error(`${context} failed (system error)`, { err });
     }
   }
 }
