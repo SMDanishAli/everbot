@@ -225,7 +225,15 @@ export async function runSession(): Promise<void> {
     db,
   );
 
-  const cli = new CliController(allocationService, logger);
+  const robotSpecs = new Map(config.robots.map((robot) => [robot.name, robot]));
+  const capacityByType = config.inventory.reduce((capacity, entry) => {
+    const robot = robotSpecs.get(entry.type);
+    if (robot) {
+      capacity[entry.type] = (capacity[entry.type] ?? 0) + entry.count * robot.hours;
+    }
+    return capacity;
+  }, {} as Record<string, number>);
+  const cli = new CliController(allocationService, logger, capacityByType);
 
   if (strategyChoice.toUpperCase() === 'L2' || strategyChoice.toUpperCase() === 'L3') {
     await cli.run(

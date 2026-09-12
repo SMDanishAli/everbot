@@ -20,6 +20,7 @@ export class CliController {
   constructor(
     private readonly allocationService: AllocationService,
     private readonly logger: ILogger,
+    private readonly capacityByType: Record<string, number> = {},
   ) {}
 
   async run(
@@ -86,7 +87,7 @@ export class CliController {
             })
             .join('\n\n'),
         );
-        console.log(`\n${MultiClientSummaryFormatter.format(results)}`);
+        console.log(`\n${MultiClientSummaryFormatter.format(results, this.capacityByType)}`);
       }
     } catch (err) {
       // Already logged inside AllocationService — just present it to the user here.
