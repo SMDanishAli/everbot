@@ -142,9 +142,28 @@ npm run lint
 npm run format
 ```
 
+
 ## Architecture
 
-The source is organized by responsibility:
+The project is split into simple areas:
+
+- **CLI** — handles commands, prompts, and display.
+- **Services** — coordinates actions such as allocation and reporting.
+- **Strategies** — contains the different ways robots can be allocated.
+- **Domain** — contains the main robot and request rules.
+- **Infrastructure** — handles configuration, the database, and logging.
+
+Key benefits:
+
+- L1, L2, and L3 can be selected without changing the rest of the application.
+- Standby robots are used only when active robots are not enough.
+- Robot types and inventory can be changed in `config.yaml` without changing code.
+- Allocation rules are kept separate from the database, making the application
+  easier to test and maintain.
+- SQLite uses WAL mode to support safer concurrent access.
+- The project follows a test-driven approach, with automated tests covering
+  allocation strategies, services, CLI behavior, and database operations.
+
 
 ```text
 src/
@@ -181,24 +200,11 @@ src/
     └── repositories/                   # Sqlite repository functions
 ```
 
+### Assumptions
+
+- 1. Robot availability constraints follow the daily allocation quota. This mean the robots availability will be reset at midnight. We do not cater for the working duration of the robot as it is beyond the scope (as per the spec document). If a robot starts work at 11 pm, it will be reset at 12am eventhough it has work duration of 3 hours
+- 2. The allocation history is persisted in the sqlite database which is stateless and file-based. The application is asssumed to be run on a single-host machine (Not in centralized / file-sharing system).
+- 3. The WAL mode (enabled by default in config.yaml) allows for concurrent reads and writes (across multiple terminal sessions). However, the application isn't fully safe in terms of concurrency because the current inventory is only kept in-memory (as per the spec document)
 
 
-## Design decisions
 
-- **Strategy pattern** (`IAllocationStrategy`) — each allocation level is a swappable
-  implementation; adding a new level means adding a class, not editing existing ones.
-- **Decorator pattern** — Level 3 (`StandbyActivationStrategy`) wraps a base strategy
-  rather than duplicating its selection logic.
-- **Repository pattern** + Dependency Inversion — `services`/`strategies` depend on
-  `IRobotRepository`/`IAllocationHistoryRepository` interfaces, not SQLite directly.
-- **Config-driven robot specs** — `RobotType` is a plain value object; actual hours/cost
-  come from `config.yaml` via `RobotTypeRegistry`. Changing a robot's numbers, or adding
-  a new type, requires no code change.
-- **Logging abstraction** — `ILogger` interface, `PinoLogger` real implementation
-  (rotating file + console, ISO timestamps), `InMemoryLogger` for tests. Logical errors
-  (`DomainError` subclasses) are logged at `warn`; unexpected/system errors at `error`.
-  Logging happens once, at the boundary where an error is caught — not duplicated at
-  every layer it passes through.
-- **SQLite via `better-sqlite3`** — WAL mode + `busy_timeout` so multiple CLI instances
-  run concurrently without corrupting data; inventory allocation is wrapped in a single
-  transaction (atomic read-check-write) to prevent race conditions.
