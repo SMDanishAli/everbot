@@ -10,10 +10,7 @@ import { MultiClientAllocator } from '../strategies/MultiClientAllocator';
 import { AllocationComparator, ComparisonReport } from './AllocationComparator';
 
 /**
- * Orchestrates a single allocation end-to-end: load inventory, run the given
- * strategy, persist the result + updated inventory, log the outcome.
- * Logs at the boundary where the error is caught, distinguishing expected
- * domain rejections from unexpected system failures.
+ * Run the given strategy, persist the result + updated inventory, log the outcome.
  */
 export class AllocationService {
   constructor(

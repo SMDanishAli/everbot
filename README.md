@@ -4,7 +4,27 @@ Terminal-based CLI (Node.js + TypeScript) that allocates robots to client work
 requests, per the EverBot Solutions spec (4 levels: category distribution,
 cost optimization, standby activation, multi-client).
 
-## How to use
+## CLI interface
+
+Use the following command format:
+
+```text
+everbot <command>
+```
+
+| Command | Description | Options / Output |
+| --- | --- | --- |
+| `run` | Starts an interactive allocation session. Prompts for one or more client work-hour requests and an allocation strategy. | Supports L1, L2, and L3 strategies. Level 2 also prints the Level 1 vs Level 2 cost comparison. |
+| `allocation` | Displays persisted allocation history. | Reads records from the configured SQLite database. |
+| `summary` | Displays current inventory, charging cost, and robot utilisation. | Uses the configured inventory and allocation history. |
+| `reset` | Clears allocation history. | Add `--hard` to drop all application SQLite tables. |
+| `logs` | Displays application logs and available log-file paths. | Uses the logging directory and file name from `config.yaml`. |
+| `--help`, `-h` | Displays command usage. | Also shown when no command is provided. |
+
+For packaged releases, replace `everbot` with the platform executable name and
+run it from inside the corresponding `Everbot (...)` folder.
+
+## To Install
 
 ### 1. Using as packaged release
 
@@ -133,52 +153,35 @@ src/
 │   ├── bin.ts                        # command definitions
 │   ├── commandHandlers.ts            # composition root and command handlers
 │   ├── CliController.ts              # prompts and allocation interaction
-│   ├── prompts.ts
+│   ├── prompts.ts                    # helper functions for clack prompts
 │   └── formatters/                   # terminal output
-├── parsers/
+├── parsers/                          # To parse and validate CLI inputs
 │   ├── ClientHoursParser.ts
 │   └── InputValidator.ts
 ├── services/
-│   ├── AllocationService.ts
-│   ├── InventoryService.ts
-│   ├── AllocationComparator.ts
-│   ├── CostCalculator.ts
-│   └── UtilizationCalculator.ts
+│   ├── AllocationService.ts          # Run the given strategy & persist the result
+│   ├── InventoryService.ts           # Get available resources
+│   ├── AllocationComparator.ts       # Compare L1 and L2 efficiency
+│   ├── CostCalculator.ts             # Cost calculations
+│   └── UtilizationCalculator.ts      # Utilization calculation for summaries
 ├── strategies/
-│   ├── IAllocationStrategy.ts
+│   ├── IAllocationStrategy.ts        # Interface implemented by all other strategies 
 │   ├── CategoryDistributionStrategy.ts # L1
 │   ├── CostOptimizedStrategy.ts        # L2
 │   ├── StandbyActivationStrategy.ts    # L3
-│   └── MultiClientAllocator.ts
-├── domain/
+│   └── MultiClientAllocator.ts         # Triggered when there is multi-client input.
+├── domain/                             # Repo interfaces & error types
 │   ├── entities/
 │   ├── errors/
-│   └── repositories/                  # repository interfaces
+│   └── repositories/            
 └── infrastructure/
-    ├── config/
-    ├── db/
-    ├── logging/
-    └── repositories/
+    ├── config/                         # To load config.yaml
+    ├── db/                             # sqlite db migrations
+    ├── logging/                        # Pino logger
+    └── repositories/                   # Sqlite repository functions
 ```
 
-`src/cli/commandHandlers.ts` wires the concrete infrastructure together. It
-loads `config.yaml`, creates the logger and SQLite database, runs migrations,
-builds the in-memory inventory repository and services, selects the allocation
-strategy, and passes the resulting `AllocationService` to `CliController`.
 
-During `everbot run`, `CliController` parses the prompt input into
-`ClientRequest` objects. `AllocationService` asks `InventoryService` for
-available `Robot` objects, invokes the selected strategy, calls the repository
-to consume the assigned inventory, and writes one or more records to
-`allocation_history`. For multiple clients, `AllocationService` uses
-`MultiClientAllocator`, which owns depletion of the shared in-memory pool.
-
-The configured inventory is loaded into `SqliteRobotRepository` at startup and
-is held in memory for the process lifetime. SQLite stores allocation history,
-which is applied once on startup to calculate the available inventory. The
-database layer also provides migrations, WAL mode, and `busy_timeout`.
-Repository interfaces in `domain/repositories` keep services and strategies
-independent of the SQLite implementations.
 
 ## Design decisions
 
