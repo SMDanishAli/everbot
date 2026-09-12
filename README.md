@@ -4,6 +4,29 @@ Terminal-based CLI (Node.js + TypeScript) that allocates robots to client work
 requests, per the EverBot Solutions spec (4 levels: category distribution,
 cost optimization, standby activation, multi-client).
 
+## To Install
+
+- Install Node.js 18+ on your machine
+- Clone the repo and run the following:
+
+```bash
+npm install
+npm run build
+npm link        # makes `everbot` available globally, use with sudo on
+
+everbot run
+```
+For testing / debugging:
+
+```bash
+npm run dev            # ts-node, no build step
+npm test                # jest
+npm run test:watch
+npm run test:coverage
+npm run lint
+npm run format
+```
+
 ## CLI interface
 
 Use the following command format:
@@ -23,102 +46,6 @@ everbot <command>
 
 For packaged releases, replace `everbot` with the platform executable name and
 run it from inside the corresponding `Everbot (...)` folder.
-
-## To Install
-
-### 1. Using as packaged release
-
-Download the zip file for your platform from the latest release and extract it.
-Each zip contains the executable, its matching `config.yaml`, and the
-platform-specific SQLite native binding:
-
-```text
-everbot-linux-x64.zip
-├── everbot
-├── better_sqlite3.node
-└── config.yaml
-everbot-macos-x64.zip
-├── everbot
-├── better_sqlite3.node
-└── config.yaml
-everbot-win-x64.zip
-├── everbot.exe
-├── better_sqlite3.node
-└── config.yaml
-```
-
-After extraction, the folder should look like this:
-
-```text
-Everbot (Linux)/
-├── everbot
-├── better_sqlite3.node
-└── config.yaml
-Everbot (macOs)/
-├── everbot
-├── better_sqlite3.node
-└── config.yaml
-Everbot (Windows)/
-├── everbot.exe
-├── better_sqlite3.node
-└── config.yaml
-```
-Keep all three files together. The paths in that
-config are relative to the platform folder:
-
-```yaml
-logging:
-  directory: ./logs
-database:
-  path: ./data/allocation.sqlite
-```
-
-From inside the platform folder, run the macOS or Linux binary with `./`:
-
-```bash
-cd "/path/to/Everbot (macOs)"
-chmod +x everbot
-./everbot run
-./everbot allocation
-```
-
-Use `everbot` on macOS and Linux. `/everbot` is
-interpreted as an absolute path from the filesystem root, while
-`./everbot` means the binary in the current directory.
-
-If macOS blocks the downloaded binary, allow it in **System Settings >
-Privacy & Security**, then run the command again.
-
-For Linux, use:
-
-```bash
-cd "/path/to/Everbot (Linux)"
-chmod +x everbot
-./everbot summary
-./everbot run
-./everbot allocation
-```
-On Windows, run the executable from PowerShell:
-
-```powershell
-cd "C:\path\to\Everbot (Windows)"
-.\everbot.exe summary
-.\everbot.exe run
-.\everbot.exe allocation
-```
-
-### 2. Developer's Setup
-
-- Install Node.js 18+ on your machine
-- Clone the repo and run the following:
-
-```bash
-npm install
-npm run build
-npm link        # makes `everbot` available globally, use sudo on dev
-
-everbot run
-```
 
 ## Config
 
@@ -155,16 +82,9 @@ database:
 *Note:* The config is in-memory hence every new execution of everbot will use the latest values from the config. 
 
 
-### For testing / debugging
 
-```bash
-npm run dev            # ts-node, no build step
-npm test                # jest
-npm run test:watch
-npm run test:coverage
-npm run lint
-npm run format
-```
+
+
 
 
 ## Architecture
@@ -231,3 +151,55 @@ src/
   stored in SQLite. Each allocation re-reads the day's history and uses an
   immediate SQLite transaction for the final capacity check and history write.
 - 4. For multi-client input, L3 (Standby Activation Strategy) is always used implicitly which internally uses cost-optimised strategy. The CLI prints this in yellow color clearly.
+
+
+### Using as packaged release (experimental)
+
+*Note:* Since we are using shared github runners, packaged release may fail or stay stuck. 
+
+Download the zip file for your platform from the latest release and extract it.
+Each zip contains the executable, its matching `config.yaml`, and the
+platform-specific SQLite native binding:
+
+```text
+everbot-linux-x64.zip
+├── everbot
+├── better_sqlite3.node
+└── config.yaml
+everbot-macos-x64.zip
+├── everbot
+├── better_sqlite3.node
+└── config.yaml
+everbot-win-x64.zip
+├── everbot.exe
+├── better_sqlite3.node
+└── config.yaml
+```
+
+After extraction, the folder should look like this:
+
+```text
+Everbot (Linux)/
+├── everbot
+├── better_sqlite3.node
+└── config.yaml
+Everbot (macOs)/
+├── everbot
+├── better_sqlite3.node
+└── config.yaml
+Everbot (Windows)/
+├── everbot.exe
+├── better_sqlite3.node
+└── config.yaml
+```
+Keep all three files together. The paths in that
+config are relative to the platform folder:
+
+```yaml
+logging:
+  directory: ./logs
+database:
+  path: ./data/allocation.sqlite
+```
+
+From inside the platform folder, run the macOS or Linux binary with `./`:
