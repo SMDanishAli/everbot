@@ -182,7 +182,6 @@ src/
 ├── services/
 │   ├── AllocationService.ts          # Run the given strategy & persist the result
 │   ├── InventoryService.ts           # Get available resources
-│   ├── AllocationComparator.ts       # Compare L1 and L2 efficiency
 ├── strategies/
 │   ├── IAllocationStrategy.ts        # Interface implemented by all other strategies 
 │   ├── CategoryDistributionStrategy.ts # L1
@@ -197,7 +196,7 @@ src/
     ├── config/                         # To load config.yaml
     ├── db/                             # sqlite db migrations
     ├── logging/                        # Pino logger
-    └── repositories/                   # Sqlite repository functions
+    └── repositories/                   # Inventory and allocation persistence
 ```
 
 ### Assumptions

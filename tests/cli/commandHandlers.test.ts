@@ -16,7 +16,6 @@ const mockConfig = {
 const mockLoad = jest.fn(() => mockConfig);
 const mockClose = jest.fn();
 const mockMigrationRun = jest.fn();
-const mockGetInventory = jest.fn();
 const mockGetAvailableInventory = jest.fn();
 const mockFindAll = jest.fn();
 const mockGetAvailableRobots = jest.fn();
@@ -59,12 +58,14 @@ jest.mock('../../src/infrastructure/db/MigrationRunner', () => ({
   },
 }));
 
-jest.mock('../../src/infrastructure/repositories/SqliteRobotRepository', () => ({
-  SqliteRobotRepository: class {
-    getInventory = mockGetInventory;
+jest.mock('../../src/infrastructure/repositories/ConfigInventoryProvider', () => ({
+  ConfigInventoryProvider: class {
     getAvailableInventory = mockGetAvailableInventory;
-    getAvailableRobots = mockGetAvailableRobots;
   },
+}));
+
+jest.mock('../../src/infrastructure/repositories/AllocationReservationRepository', () => ({
+  AllocationReservationRepository: class {},
 }));
 
 jest.mock('../../src/infrastructure/repositories/SqliteAllocationHistoryRepository', () => ({
@@ -147,7 +148,6 @@ describe('runSession CLI workflows', () => {
     jest.spyOn(console, 'info').mockImplementation(() => undefined);
     jest.spyOn(console, 'warn').mockImplementation(() => undefined);
     jest.spyOn(console, 'error').mockImplementation(() => undefined);
-    mockGetInventory.mockResolvedValue([{ type: 'Bravo', source: RobotSource.ACTIVE, available: 2 }]);
     mockGetAvailableInventory.mockResolvedValue([
       { type: 'Bravo', source: RobotSource.ACTIVE, available: 1 },
     ]);

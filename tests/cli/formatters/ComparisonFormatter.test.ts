@@ -1,6 +1,6 @@
 import { AllocationResult } from '../../../src/domain/entities/AllocationResult';
 import { ComparisonFormatter } from '../../../src/cli/formatters/ComparisonFormatter';
-import { ComparisonReport } from '../../../src/services/AllocationComparator';
+import { ComparisonReport } from '../../../src/services/AllocationService';
 
 describe('ComparisonFormatter', () => {
   const result = new AllocationResult('client-1', 3, []);

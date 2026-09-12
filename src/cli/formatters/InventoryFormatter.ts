@@ -1,4 +1,4 @@
-import { RobotInventoryCount } from '../../domain/repositories/IRobotRepository';
+import { RobotInventoryCount } from '../../domain/repositories/IInventoryProvider';
 
 type InventoryDisplayRow = RobotInventoryCount & {
   total?: number;

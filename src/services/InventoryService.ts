@@ -1,5 +1,5 @@
 import { Robot, RobotSource } from '../domain/entities/Robot';
-import { IRobotRepository } from '../domain/repositories/IRobotRepository';
+import { IInventoryProvider } from '../domain/repositories/IInventoryProvider';
 import { RobotTypeRegistry } from '../infrastructure/config/RobotTypeRegistry';
 import { ZeroRobotsError } from '../domain/errors';
 
@@ -10,7 +10,7 @@ import { ZeroRobotsError } from '../domain/errors';
  */
 export class InventoryService {
   constructor(
-    private readonly repository: IRobotRepository,
+    private readonly repository: IInventoryProvider,
     private readonly robotTypes: RobotTypeRegistry,
   ) {}
 

@@ -1,4 +1,4 @@
-import { ComparisonReport } from '../../services/AllocationComparator';
+import { ComparisonReport } from '../../services/AllocationService';
 
 export class ComparisonFormatter {
   static format(report: ComparisonReport): string {

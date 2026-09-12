@@ -5,7 +5,8 @@ import { RobotTypeRegistry } from '../infrastructure/config/RobotTypeRegistry';
 import { PinoLogger } from '../infrastructure/logging/PinoLogger';
 import { AppDatabase } from '../infrastructure/db/Database';
 import { MigrationRunner } from '../infrastructure/db/MigrationRunner';
-import { SqliteRobotRepository } from '../infrastructure/repositories/SqliteRobotRepository';
+import { ConfigInventoryProvider } from '../infrastructure/repositories/ConfigInventoryProvider';
+import { AllocationReservationRepository } from '../infrastructure/repositories/AllocationReservationRepository';
 import { SqliteAllocationHistoryRepository } from '../infrastructure/repositories/SqliteAllocationHistoryRepository';
 import { InventoryService } from '../services/InventoryService';
 import { AllocationService } from '../services/AllocationService';
@@ -27,7 +28,7 @@ export async function showSummary(): Promise<void> {
   try {
     new MigrationRunner(db, logger).run();
 
-    const inventory = await new SqliteRobotRepository(db, logger, config.inventory).getAvailableInventory();
+    const inventory = await new ConfigInventoryProvider(db, config.inventory).getAvailableInventory();
     const totals = new Map(
       config.inventory.map(({ type, source, count }) => [`${type}:${source}`, count]),
     );
@@ -170,8 +171,8 @@ export async function runSession(): Promise<void> {
   const db = new AppDatabase(config.database);
   new MigrationRunner(db, logger).run();
 
-  const robotRepository = new SqliteRobotRepository(db, logger, config.inventory);
-  const inventory = await robotRepository.getAvailableInventory();
+  const inventoryProvider = new ConfigInventoryProvider(db, config.inventory);
+  const inventory = await inventoryProvider.getAvailableInventory();
   const availableRobots = inventory.reduce((total, entry) => total + entry.available, 0);
   if (availableRobots === 0) {
     console.error(
@@ -182,7 +183,11 @@ export async function runSession(): Promise<void> {
   }
 
   const historyRepository = new SqliteAllocationHistoryRepository(db);
-  const inventoryService = new InventoryService(robotRepository, robotTypes);
+  const inventoryService = new InventoryService(inventoryProvider, robotTypes);
+  const reservationRepository = new AllocationReservationRepository(
+    inventoryProvider,
+    logger,
+  );
   const level2Strategy = new CostOptimizedStrategy();
   // Multi-client requests always use L3-style allocation, regardless of the
   // strategy selected for a single client.
@@ -214,7 +219,7 @@ export async function runSession(): Promise<void> {
 
   const allocationService = new AllocationService(
     inventoryService,
-    robotRepository,
+    reservationRepository,
     historyRepository,
     logger,
     db,

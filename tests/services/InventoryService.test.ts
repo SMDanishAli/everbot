@@ -2,13 +2,12 @@ import { InventoryService } from '../../src/services/InventoryService';
 import { RobotSource } from '../../src/domain/entities/Robot';
 import { RobotTypeRegistry } from '../../src/infrastructure/config/RobotTypeRegistry';
 import { ZeroRobotsError } from '../../src/domain/errors';
-import { IRobotRepository } from '../../src/domain/repositories/IRobotRepository';
+import { IInventoryProvider } from '../../src/domain/repositories/IInventoryProvider';
 
 describe('InventoryService', () => {
-  const repository: jest.Mocked<IRobotRepository> = {
+  const repository: jest.Mocked<IInventoryProvider> = {
     getInventory: jest.fn(),
     getAvailableInventory: jest.fn(),
-    allocate: jest.fn(),
   };
   const registry = new RobotTypeRegistry([
     { name: 'Bravo', hours: 3, chargingCost: 2 },

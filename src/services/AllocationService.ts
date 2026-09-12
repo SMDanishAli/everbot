@@ -1,14 +1,38 @@
 import { ClientRequest } from '../domain/entities/ClientRequest';
 import { AllocationResult } from '../domain/entities/AllocationResult';
 import { IAllocationStrategy } from '../strategies/IAllocationStrategy';
-import { IRobotRepository } from '../domain/repositories/IRobotRepository';
+import { IAllocationReservationRepository } from '../domain/repositories/IAllocationReservationRepository';
 import { IAllocationHistoryRepository } from '../domain/repositories/IAllocationHistoryRepository';
 import { InventoryService } from './InventoryService';
 import { DomainError } from '../domain/errors';
 import { ILogger } from '../infrastructure/logging/ILogger';
 import { MultiClientAllocator } from '../strategies/MultiClientAllocator';
-import { AllocationComparator, ComparisonReport } from './AllocationComparator';
 import { AppDatabase } from '../infrastructure/db/Database';
+
+export interface ComparisonReport {
+  categoryDistribution: AllocationResult;
+  costOptimized: AllocationResult;
+  costDifference: number;
+  cheaper: 'categoryDistribution' | 'costOptimized' | 'equal';
+}
+
+const compareAllocations = (
+  categoryDistribution: AllocationResult,
+  costOptimized: AllocationResult,
+): ComparisonReport => {
+  const costDifference = categoryDistribution.totalCost - costOptimized.totalCost;
+  return {
+    categoryDistribution,
+    costOptimized,
+    costDifference: Math.abs(costDifference),
+    cheaper:
+      costDifference === 0
+        ? 'equal'
+        : costDifference > 0
+          ? 'costOptimized'
+          : 'categoryDistribution',
+  };
+};
 
 /**
  * Run the given strategy, persist the result + updated inventory, log the outcome.
@@ -16,7 +40,7 @@ import { AppDatabase } from '../infrastructure/db/Database';
 export class AllocationService {
   constructor(
     private readonly inventoryService: InventoryService,
-    private readonly robotRepository: IRobotRepository,
+    private readonly reservationRepository: IAllocationReservationRepository,
     private readonly historyRepository: IAllocationHistoryRepository,
     private readonly logger: ILogger,
     private readonly db?: AppDatabase,
@@ -53,7 +77,7 @@ export class AllocationService {
         await this.persistAllocation(result, strategy.name);
         return {
           result,
-          comparison: AllocationComparator.compare(comparisonResult, comparisonTarget),
+          comparison: compareAllocations(comparisonResult, comparisonTarget),
         };
       });
     } catch (err) {
@@ -112,7 +136,7 @@ export class AllocationService {
             if (!level1 || !level2) {
               throw new Error(`Missing comparison result for ${result.clientId}.`);
             }
-            return AllocationComparator.compare(level1, level2);
+            return compareAllocations(level1, level2);
           }),
         };
       });
@@ -134,7 +158,7 @@ export class AllocationService {
   }
 
   private async persistAllocation(result: AllocationResult, strategyName: string): Promise<void> {
-    await this.robotRepository.allocate(
+    await this.reservationRepository.allocate(
       result.assignedRobots.map((robot) => ({
         type: robot.type.name,
         source: robot.source,
@@ -156,7 +180,7 @@ export class AllocationService {
       })),
     );
 
-    await this.robotRepository.allocate(selections);
+    await this.reservationRepository.allocate(selections);
     for (const result of results) {
       await this.historyRepository.save(result, strategyName);
     }

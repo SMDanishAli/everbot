@@ -5,7 +5,7 @@ import { Robot } from '../../src/domain/entities/Robot';
 import { RobotType } from '../../src/domain/entities/RobotType';
 import { ZeroRobotsError } from '../../src/domain/errors';
 import { ILogger } from '../../src/infrastructure/logging/ILogger';
-import { IRobotRepository } from '../../src/domain/repositories/IRobotRepository';
+import { IAllocationReservationRepository } from '../../src/domain/repositories/IAllocationReservationRepository';
 import { IAllocationHistoryRepository } from '../../src/domain/repositories/IAllocationHistoryRepository';
 import { InventoryService } from '../../src/services/InventoryService';
 import { IAllocationStrategy } from '../../src/strategies/IAllocationStrategy';
@@ -21,9 +21,7 @@ describe('AllocationService', () => {
   const inventoryService = {
     getAvailableRobots: jest.fn(),
   } as unknown as jest.Mocked<InventoryService>;
-  const robotRepository: jest.Mocked<IRobotRepository> = {
-    getInventory: jest.fn(),
-    getAvailableInventory: jest.fn(),
+  const reservationRepository: jest.Mocked<IAllocationReservationRepository> = {
     allocate: jest.fn(),
   };
   const historyRepository: jest.Mocked<IAllocationHistoryRepository> = {
@@ -40,20 +38,20 @@ describe('AllocationService', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     inventoryService.getAvailableRobots.mockResolvedValue([robot]);
-    robotRepository.allocate.mockResolvedValue();
+    reservationRepository.allocate.mockResolvedValue();
     historyRepository.save.mockResolvedValue();
     strategy.allocate = jest.fn().mockReturnValue(new AllocationResult('client-1', 3, [robot]));
   });
 
   function service(): AllocationService {
-    return new AllocationService(inventoryService, robotRepository, historyRepository, logger);
+    return new AllocationService(inventoryService, reservationRepository, historyRepository, logger);
   }
 
   it('allocates, persists, and returns a single result', async () => {
     const result = await service().allocate(strategy, request);
 
     expect(result.assignedRobots).toEqual([robot]);
-    expect(robotRepository.allocate).toHaveBeenCalledWith([
+    expect(reservationRepository.allocate).toHaveBeenCalledWith([
       { type: 'Bravo', source: robot.source, count: 1 },
     ]);
     expect(historyRepository.save).toHaveBeenCalledWith(result, 'Test strategy');
@@ -73,7 +71,7 @@ describe('AllocationService', () => {
 
   it('logs unexpected single-allocation errors as system failures', async () => {
     const error = new Error('database unavailable');
-    robotRepository.allocate.mockRejectedValue(error);
+    reservationRepository.allocate.mockRejectedValue(error);
 
     await expect(service().allocate(strategy, request)).rejects.toBe(error);
 
@@ -93,7 +91,7 @@ describe('AllocationService', () => {
     const result = await service().allocateWithComparison(optimizedStrategy, categoryStrategy, request);
 
     expect(result.comparison.costDifference).toBe(0);
-    expect(robotRepository.allocate).toHaveBeenCalledTimes(1);
+    expect(reservationRepository.allocate).toHaveBeenCalledTimes(1);
     expect(historyRepository.save).toHaveBeenCalledWith(result.result, 'L2');
   });
 
@@ -109,7 +107,7 @@ describe('AllocationService', () => {
     const results = await service().allocateMany(strategy, [request, secondRequest]);
 
     expect(results).toHaveLength(2);
-    expect(robotRepository.allocate).toHaveBeenCalledWith([
+    expect(reservationRepository.allocate).toHaveBeenCalledWith([
       { type: 'Bravo', source: robot.source, count: 1 },
       { type: 'Bravo', source: secondRobot.source, count: 1 },
     ]);
@@ -148,7 +146,7 @@ describe('AllocationService', () => {
 
     expect(allocation.results).toHaveLength(2);
     expect(allocation.comparisons).toHaveLength(2);
-    expect(robotRepository.allocate).toHaveBeenCalledTimes(1);
+    expect(reservationRepository.allocate).toHaveBeenCalledTimes(1);
     expect(historyRepository.save).toHaveBeenCalledTimes(2);
   });
 
