@@ -5,6 +5,7 @@ import { AssignmentFormatter } from './formatters/AssignmentFormatter';
 import { ErrorFormatter } from './formatters/ErrorFormatter';
 import { prompt } from './prompts';
 import { ILogger } from '../infrastructure/logging/ILogger';
+import { ComparisonFormatter } from './formatters/ComparisonFormatter';
 
 /**
  * Thin I/O layer: prompts, delegates to AllocationService, formats output.
@@ -16,7 +17,11 @@ export class CliController {
     private readonly logger: ILogger,
   ) {}
 
-  async run(strategy: IAllocationStrategy, multiClientStrategy = strategy): Promise<void> {
+  async run(
+    strategy: IAllocationStrategy,
+    multiClientStrategy = strategy,
+    comparisonStrategy?: IAllocationStrategy,
+  ): Promise<void> {
     const rawHours = await prompt('Enter client work hours needed (comma-separated for multiple clients): ');
     const hourValues = rawHours.split(',').map((value) => Number(value.trim()));
 
@@ -32,8 +37,18 @@ export class CliController {
 
     try {
       if (requests.length === 1) {
-        const result = await this.allocationService.allocate(strategy, requests[0]);
-        console.log(AssignmentFormatter.format(result, strategy.name));
+        if (comparisonStrategy) {
+          const { result, comparison } = await this.allocationService.allocateWithComparison(
+            strategy,
+            comparisonStrategy,
+            requests[0],
+          );
+          console.log(AssignmentFormatter.format(result, strategy.name));
+          console.log(ComparisonFormatter.format(comparison));
+        } else {
+          const result = await this.allocationService.allocate(strategy, requests[0]);
+          console.log(AssignmentFormatter.format(result, strategy.name));
+        }
       } else {
         const results = await this.allocationService.allocateMany(multiClientStrategy, requests);
         console.log(

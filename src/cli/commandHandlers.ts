@@ -218,7 +218,11 @@ export async function runSession(): Promise<void> {
 
   const cli = new CliController(allocationService, logger);
 
-  await cli.run(strategy, multiClientStrategy);
+  if (strategyChoice.toUpperCase() === 'L2') {
+    await cli.run(strategy, multiClientStrategy, new CategoryDistributionStrategy());
+  } else {
+    await cli.run(strategy, multiClientStrategy);
+  }
 
   db.close();
 }

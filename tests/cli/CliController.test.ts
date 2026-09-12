@@ -25,7 +25,9 @@ describe('CliController', () => {
     error: jest.fn(),
   };
 
-  let service: jest.Mocked<Pick<AllocationService, 'allocate' | 'allocateMany'>>;
+  let service: jest.Mocked<
+    Pick<AllocationService, 'allocate' | 'allocateMany' | 'allocateWithComparison'>
+  >;
   let controller: CliController;
 
   beforeEach(() => {
@@ -33,6 +35,7 @@ describe('CliController', () => {
     service = {
       allocate: jest.fn(),
       allocateMany: jest.fn(),
+      allocateWithComparison: jest.fn(),
     };
     controller = new CliController(service as unknown as AllocationService, logger);
     jest.spyOn(console, 'log').mockImplementation(() => undefined);
@@ -79,6 +82,34 @@ describe('CliController', () => {
     ]);
     expect(service.allocate).not.toHaveBeenCalled();
     expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Hours requested'));
+  });
+
+  it('compares Level 1 and Level 2 for a single Level 2 request', async () => {
+    const result = new AllocationResult('client-1', 3, [new Robot(bravo)]);
+    const comparisonStrategy: IAllocationStrategy = {
+      name: 'L1',
+      allocate: jest.fn(),
+    };
+    service.allocateWithComparison.mockResolvedValue({
+      result,
+      comparison: {
+        categoryDistribution: result,
+        costOptimized: result,
+        costDifference: 0,
+        cheaper: 'equal',
+      },
+    });
+    (prompt as jest.Mock).mockResolvedValue('3');
+
+    await controller.run(strategy, strategy, comparisonStrategy);
+
+    expect(service.allocateWithComparison).toHaveBeenCalledWith(
+      strategy,
+      comparisonStrategy,
+      expect.objectContaining({ hoursRequested: 3 }),
+    );
+    expect(service.allocate).not.toHaveBeenCalled();
+    expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Level 1 Cost: $2'));
   });
 
   it('reports invalid zero-hour input without calling the allocation service', async () => {

@@ -7,6 +7,7 @@ import { InventoryService } from './InventoryService';
 import { DomainError } from '../domain/errors';
 import { ILogger } from '../infrastructure/logging/ILogger';
 import { MultiClientAllocator } from '../strategies/MultiClientAllocator';
+import { AllocationComparator, ComparisonReport } from './AllocationComparator';
 
 /**
  * Orchestrates a single allocation end-to-end: load inventory, run the given
@@ -27,16 +28,31 @@ export class AllocationService {
       const availableRobots = await this.inventoryService.getAvailableRobots();
       const result = strategy.allocate(availableRobots, request);
 
-      await this.robotRepository.allocate(
-        result.assignedRobots.map((robot) => ({
-          type: robot.type.name,
-          source: robot.source,
-          count: 1,
-        })),
-      );
-      await this.historyRepository.save(result, strategy.name);
+      await this.persistAllocation(result, strategy.name);
 
       return result;
+    } catch (err) {
+      this.logAllocationError(err, 'Allocation');
+      throw err;
+    }
+  }
+
+  async allocateWithComparison(
+    strategy: IAllocationStrategy,
+    comparisonStrategy: IAllocationStrategy,
+    request: ClientRequest,
+  ): Promise<{ result: AllocationResult; comparison: ComparisonReport }> {
+    try {
+      const availableRobots = await this.inventoryService.getAvailableRobots();
+      const comparisonResult = comparisonStrategy.allocate(availableRobots, request);
+      const result = strategy.allocate(availableRobots, request);
+
+      await this.persistAllocation(result, strategy.name);
+
+      return {
+        result,
+        comparison: AllocationComparator.compare(comparisonResult, result),
+      };
     } catch (err) {
       this.logAllocationError(err, 'Allocation');
       throw err;
@@ -79,5 +95,16 @@ export class AllocationService {
     } else {
       this.logger.error(`${context} failed (system error)`, { err });
     }
+  }
+
+  private async persistAllocation(result: AllocationResult, strategyName: string): Promise<void> {
+    await this.robotRepository.allocate(
+      result.assignedRobots.map((robot) => ({
+        type: robot.type.name,
+        source: robot.source,
+        count: 1,
+      })),
+    );
+    await this.historyRepository.save(result, strategyName);
   }
 }

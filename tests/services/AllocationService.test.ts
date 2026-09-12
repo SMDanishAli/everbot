@@ -80,6 +80,23 @@ describe('AllocationService', () => {
     expect(logger.error).toHaveBeenCalledWith('Allocation failed (system error)', { err: error });
   });
 
+  it('compares Level 1 and Level 2 while persisting only Level 2', async () => {
+    const categoryStrategy: IAllocationStrategy = {
+      name: 'L1',
+      allocate: jest.fn().mockReturnValue(new AllocationResult('client-1', 3, [robot])),
+    };
+    const optimizedStrategy: IAllocationStrategy = {
+      name: 'L2',
+      allocate: jest.fn().mockReturnValue(new AllocationResult('client-1', 3, [robot])),
+    };
+
+    const result = await service().allocateWithComparison(optimizedStrategy, categoryStrategy, request);
+
+    expect(result.comparison.costDifference).toBe(0);
+    expect(robotRepository.allocate).toHaveBeenCalledTimes(1);
+    expect(historyRepository.save).toHaveBeenCalledWith(result.result, 'L2');
+  });
+
   it('allocates multiple clients from a shared pool and persists each result', async () => {
     const secondRequest = new ClientRequest(3, 'client-2');
     const secondRobot = new Robot(bravo);
