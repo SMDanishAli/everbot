@@ -10,10 +10,6 @@ import { resetInventory, runSession, showAllocations, showLogs, showSummary } fr
  *   summary Show current inventory and utilization
  *   reset  Remove all inventory
  *   logs   Show application logs
- *
- * A plain switch is sufficient for the current single-command surface.
- * If more commands are added, extract this into a small command registry
- * (name -> handler map) rather than growing this switch indefinitely.
  */
 async function main(): Promise<void> {
   const [, , command, ...args] = process.argv;
