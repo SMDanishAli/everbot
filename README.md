@@ -28,7 +28,22 @@ run it from inside the corresponding `Everbot (...)` folder.
 
 ### 1. Using as packaged release
 
-Download platform-specific binaries from the latest release artifacts:
+Download the zip file for your platform from the latest release and extract it.
+Each zip contains the executable and its matching `config.yaml`:
+
+```text
+everbot-linux-x64.zip
+├── everbot-linux-x64.bin
+└── config.yaml
+everbot-macos-x64.zip
+├── everbot-macos-x64.bin
+└── config.yaml
+everbot-win-x64.zip
+├── everbot-win-x64.exe
+└── config.yaml
+```
+
+After extraction, the folder should look like this:
 
 ```text
 Everbot (Linux)/
@@ -41,8 +56,7 @@ Everbot (Windows)/
 ├── everbot-win-x64.exe
 └── config.yaml
 ```
-Download the folder for your platform. The folder already contains the matching
-`config.yaml`; keep the executable and config file together. The paths in that
+Keep the executable and config file together. The paths in that
 config are relative to the platform folder:
 
 ```yaml

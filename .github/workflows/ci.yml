@@ -66,16 +66,19 @@ jobs:
           pkg dist/cli/bundle.js --assets "node_modules/better-sqlite3/build/Release/better_sqlite3.node" --target node18-macos-x64 --output "artifacts/Everbot (macOs)/everbot-macos-x64.bin"
           pkg dist/cli/bundle.js --assets "node_modules/better-sqlite3/build/Release/better_sqlite3.node" --target node18-win-x64 --output "artifacts/Everbot (Windows)/everbot-win-x64.exe"
           chmod +x "artifacts/Everbot (Linux)/everbot-linux-x64.bin" "artifacts/Everbot (macOs)/everbot-macos-x64.bin"
+          zip -j "artifacts/everbot-linux-x64.zip" "artifacts/Everbot (Linux)/everbot-linux-x64.bin" "artifacts/Everbot (Linux)/config.yaml"
+          zip -j "artifacts/everbot-macos-x64.zip" "artifacts/Everbot (macOs)/everbot-macos-x64.bin" "artifacts/Everbot (macOs)/config.yaml"
+          zip -j "artifacts/everbot-win-x64.zip" "artifacts/Everbot (Windows)/everbot-win-x64.exe" "artifacts/Everbot (Windows)/config.yaml"
 
-      - name: Upload cross-platform artifacts
+      - name: Upload platform zip artifacts
         uses: actions/upload-artifact@v4
         with:
           name: everbot-${{ github.ref_name }}
-          path: artifacts/
+          path: artifacts/*.zip
           if-no-files-found: error
 
       - name: Publish release assets
         uses: softprops/action-gh-release@v2
         with:
-          files: artifacts/**
+          files: artifacts/*.zip
           generate_release_notes: true
