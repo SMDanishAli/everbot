@@ -102,33 +102,42 @@ database:
 
 
 
+## Approach
 
+- Domain layer is immutable and serve singular purpose
+- Domain and strategy logic were written test-first: a spec example
+becomes a failing test, then the minimum code to pass it. Infrastructure
+(SQLite repositories, config loading) was tested against real behavior
+(temp DB files, real YAML) rather than mocks, so tests catch real wiring
+bugs, not just unit-level correctness.
+- Robot types and inventory can be changed in `config.yaml` without changing code.
+- Allocation rules are kept separate from the database, making the application easier to test and maintain.
+- Level 1 and 2 algorithms use polynomial complexity instead of exponential - this will scale well even after adding more robot types.
+- `tsconfig.json` follows strict rules for code hygiene
+- Allocation is persisted in sqlite database with concurrency across terminal sessions (Refer to Assumptions section below for more info)
+- Fair use of object-oriented & solid principles:
+  1. *Single responsiblity* - each section of the code does only its own job without side effects
+  2. *Configurable* - Robots property and inventory can be updated by changing `config.yaml` without touching code
+  3. *Extensible* - new strategies can be added or updated without having to change allocation service or cli controllers. sqlite db migration is also supported
+- It is ensure to keep functions and classes as reusable as possible without adding extra complexities.
+- All logs are persisted in *logs* folder for debugging
 
+**Patterns:**
+- *Strategy* — L1/L2/L3 allocation logic, swapped at runtime by CLI choice.
+- *Decorator* — `StandbyActivationStrategy` wraps `CostOptimizedStrategy`
+  rather than duplicating its logic, adding standby fallback on top.
+- *Repository* — all persistence (inventory, reservations, history) sits
+  behind interfaces so SQLite can be swapped or mocked in tests.
 
-
-## Architecture
+## Design Decisions
 
 The project is split into simple areas:
 
 - **CLI** — handles commands, prompts, and display.
 - **Services** — coordinates actions such as allocation and reporting.
 - **Strategies** — contains the different ways robots can be allocated.
-- **Domain** — contains the main robot and request rules.
+- **Domain** — contains the robot interfaces, errors, and request rules.
 - **Infrastructure** — handles configuration, the database, and logging.
-
-Key benefits:
-
-- L1, L2, and L3 can be selected without changing the rest of the application.
-- Standby robots are used only when active robots are not enough.
-- Robot types and inventory can be changed in `config.yaml` without changing code.
-- Allocation rules are kept separate from the database, making the application
-  easier to test and maintain.
-- SQLite uses WAL mode and an immediate write transaction around each allocation
-  to re-check capacity and persist the allocation safely when multiple sessions
-  run at the same time.
-- The project follows a test-driven approach, with automated tests covering
-  allocation strategies, services, CLI behavior, and database operations.
-
 
 ```text
 src/
