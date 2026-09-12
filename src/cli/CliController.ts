@@ -6,6 +6,10 @@ import { ErrorFormatter } from './formatters/ErrorFormatter';
 import { prompt } from './prompts';
 import { ILogger } from '../infrastructure/logging/ILogger';
 import { ComparisonFormatter } from './formatters/ComparisonFormatter';
+import { ClientHoursParser } from '../parsers/ClientHoursParser';
+
+const formatMultiClientNotice = (message: string): string =>
+  process.stdout.isTTY ? `\x1b[33m${message}\x1b[0m` : message;
 
 /**
  * Thin I/O layer: prompts, delegates to AllocationService, formats output.
@@ -19,15 +23,17 @@ export class CliController {
 
   async run(
     strategy: IAllocationStrategy,
-    multiClientStrategy = strategy,
+    multiClientL3Strategy = strategy,
     comparisonStrategy?: IAllocationStrategy,
+    comparisonTargetStrategy?: IAllocationStrategy,
   ): Promise<void> {
-    const rawHours = await prompt('Enter client work hours needed (comma-separated for multiple clients): ');
-    const hourValues = rawHours.split(',').map((value) => Number(value.trim()));
+    const rawHours = await prompt(
+      'Enter client work hours needed (comma- or space-separated for multiple clients): ',
+    );
 
     let requests: ClientRequest[];
     try {
-      requests = hourValues.map((hours, index) => new ClientRequest(hours, `client-${index + 1}`));
+      requests = ClientHoursParser.parse(rawHours);
     } catch (err) {
       // Not yet reached AllocationService, so this is the only place this error is logged.
       this.logger.warn('Invalid CLI input', { err, rawHours });
@@ -42,6 +48,7 @@ export class CliController {
             strategy,
             comparisonStrategy,
             requests[0],
+            comparisonTargetStrategy,
           );
           console.log(AssignmentFormatter.format(result, strategy.name));
           console.log(ComparisonFormatter.format(comparison));
@@ -50,10 +57,18 @@ export class CliController {
           console.log(AssignmentFormatter.format(result, strategy.name));
         }
       } else {
-        const results = await this.allocationService.allocateMany(multiClientStrategy, requests);
+        console.log(
+          formatMultiClientNotice(
+            'Multi-client mode: Auto selecting L3-style allocation (Cost Optimised + Standby Activation).',
+          ),
+        );
+        const results = await this.allocationService.allocateMany(
+          multiClientL3Strategy,
+          requests,
+        );
         console.log(
           results
-            .map((result) => AssignmentFormatter.format(result, multiClientStrategy.name))
+            .map((result) => AssignmentFormatter.format(result, multiClientL3Strategy.name))
             .join('\n\n'),
         );
       }

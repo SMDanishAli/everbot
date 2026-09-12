@@ -38,17 +38,21 @@ export class AllocationService {
     strategy: IAllocationStrategy,
     comparisonStrategy: IAllocationStrategy,
     request: ClientRequest,
+    comparisonTargetStrategy: IAllocationStrategy = strategy,
   ): Promise<{ result: AllocationResult; comparison: ComparisonReport }> {
     try {
       const availableRobots = await this.inventoryService.getAvailableRobots();
       const comparisonResult = comparisonStrategy.allocate(availableRobots, request);
       const result = strategy.allocate(availableRobots, request);
+      const comparisonTarget = comparisonTargetStrategy === strategy
+        ? result
+        : comparisonTargetStrategy.allocate(availableRobots, request);
 
       await this.persistAllocation(result, strategy.name);
 
       return {
         result,
-        comparison: AllocationComparator.compare(comparisonResult, result),
+        comparison: AllocationComparator.compare(comparisonResult, comparisonTarget),
       };
     } catch (err) {
       this.logAllocationError(err, 'Allocation');

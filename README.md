@@ -205,6 +205,7 @@ src/
 - 1. Robot availability constraints follow the daily allocation quota. This mean the robots availability will be reset at midnight. We do not cater for the working duration of the robot as it is beyond the scope (as per the spec document). If a robot starts work at 11 pm, it will be reset at 12am eventhough it has work duration of 3 hours
 - 2. The allocation history is persisted in the sqlite database which is stateless and file-based. The application is asssumed to be run on a single-host machine (Not in centralized / file-sharing system).
 - 3. The WAL mode (enabled by default in config.yaml) allows for concurrent reads and writes (across multiple terminal sessions). However, the application isn't fully safe in terms of concurrency because the current inventory is only kept in-memory (as per the spec document)
+- 4. For multi-client input, L3 (Standby Activation Strategy) is always used implicitly which internally uses cost-optimised strategy. The CLI prints this in yellow color clearly.
 
 
 

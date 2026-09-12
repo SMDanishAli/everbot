@@ -183,7 +183,10 @@ export async function runSession(): Promise<void> {
 
   const historyRepository = new SqliteAllocationHistoryRepository(db);
   const inventoryService = new InventoryService(robotRepository, robotTypes);
-  const multiClientStrategy = new StandbyActivationStrategy(new CostOptimizedStrategy());
+  const level2Strategy = new CostOptimizedStrategy();
+  // Multi-client requests always use L3-style allocation, regardless of the
+  // strategy selected for a single client.
+  const multiClientL3Strategy = new StandbyActivationStrategy(level2Strategy);
 
   const strategyChoice = await selectPrompt('Choose an allocation strategy:', [
     { label: 'L1 - Category Distribution', value: 'L1' },
@@ -197,10 +200,10 @@ export async function runSession(): Promise<void> {
       strategy = new CategoryDistributionStrategy();
       break;
     case 'L2':
-      strategy = new CostOptimizedStrategy();
+      strategy = level2Strategy;
       break;
     case 'L3': {
-      strategy = new StandbyActivationStrategy(new CostOptimizedStrategy());
+      strategy = new StandbyActivationStrategy(level2Strategy);
       break;
     }
     default:
@@ -218,10 +221,15 @@ export async function runSession(): Promise<void> {
 
   const cli = new CliController(allocationService, logger);
 
-  if (strategyChoice.toUpperCase() === 'L2') {
-    await cli.run(strategy, multiClientStrategy, new CategoryDistributionStrategy());
+  if (strategyChoice.toUpperCase() === 'L2' || strategyChoice.toUpperCase() === 'L3') {
+    await cli.run(
+      strategy,
+      multiClientL3Strategy,
+      new CategoryDistributionStrategy(),
+      level2Strategy,
+    );
   } else {
-    await cli.run(strategy, multiClientStrategy);
+    await cli.run(strategy, multiClientL3Strategy);
   }
 
   db.close();

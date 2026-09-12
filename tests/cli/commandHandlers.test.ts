@@ -298,7 +298,9 @@ describe('runSession CLI workflows', () => {
     expect(mockCliRun).toHaveBeenCalledWith(
       expect.objectContaining({ name: expectedName }),
       expect.anything(),
-      ...(choice.toUpperCase() === 'L2' ? [expect.objectContaining({ name: 'L1' })] : []),
+      ...(choice.toUpperCase() === 'L2'
+        ? [expect.objectContaining({ name: 'L1' }), expect.objectContaining({ name: 'L2' })]
+        : []),
     );
     expect(mockClose).toHaveBeenCalled();
   });
@@ -324,6 +326,8 @@ describe('runSession CLI workflows', () => {
         name: 'L3',
       }),
       expect.anything(),
+      expect.objectContaining({ name: 'L1' }),
+      expect.objectContaining({ name: 'L2' }),
     );
   });
 

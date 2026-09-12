@@ -81,7 +81,26 @@ describe('CliController', () => {
       expect.objectContaining({ clientId: 'client-2', hoursRequested: 4 }),
     ]);
     expect(service.allocate).not.toHaveBeenCalled();
+    expect(console.log).toHaveBeenCalledWith(
+      'Multi-client mode: Auto selecting L3-style allocation (Cost Optimised + Standby Activation).',
+    );
     expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Hours requested'));
+  });
+
+  it('allocates space-separated clients as a shared multi-client request', async () => {
+    const results = [
+      new AllocationResult('client-1', 12, [new Robot(bravo)]),
+      new AllocationResult('client-2', 4, [new Robot(bravo)]),
+    ];
+    service.allocateMany.mockResolvedValue(results);
+    (prompt as jest.Mock).mockResolvedValue('12 4');
+
+    await controller.run(strategy, strategy);
+
+    expect(service.allocateMany).toHaveBeenCalledWith(strategy, [
+      expect.objectContaining({ clientId: 'client-1', hoursRequested: 12 }),
+      expect.objectContaining({ clientId: 'client-2', hoursRequested: 4 }),
+    ]);
   });
 
   it('compares Level 1 and Level 2 for a single Level 2 request', async () => {
@@ -107,6 +126,7 @@ describe('CliController', () => {
       strategy,
       comparisonStrategy,
       expect.objectContaining({ hoursRequested: 3 }),
+      undefined,
     );
     expect(service.allocate).not.toHaveBeenCalled();
     expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Level 1 Cost: $2'));
@@ -123,7 +143,9 @@ describe('CliController', () => {
       'Invalid CLI input',
       expect.objectContaining({ rawHours: '0' }),
     );
-    expect(console.error).toHaveBeenCalledWith('Error: Work hours must be greater than 0.');
+    expect(console.error).toHaveBeenCalledWith(
+      'Error: Client 1 work hours must be a positive integer.',
+    );
   });
 
   it('displays domain allocation errors returned by the service', async () => {
