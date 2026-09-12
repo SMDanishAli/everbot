@@ -55,19 +55,37 @@ database settings. Sample is shown below:
 ```yaml
 robots:
   - name: Bravo
-    hours: 3
+    hours: 3        # <= 0 will throw error
     chargingCost: 2
+  - name: Charlie
+    hours: 5
+    chargingCost: 3
+  - name: Delta
+    hours: 8
+    chargingCost: 4
 
 inventory:
   - type: Bravo
     source: ACTIVE
-    count: 10
+    count: 5
+  - type: Charlie
+    source: ACTIVE
+    count: 5
+  - type: Delta
+    source: ACTIVE
+    count: 5
   - type: Bravo
+    source: STANDBY
+    count: 2
+  - type: Charlie
+    source: STANDBY
+    count: 2
+  - type: Delta
     source: STANDBY
     count: 2
 
 logging:
-  level: info
+  level: debug          # trace | debug | info | warn | error
   directory: ./logs
   fileName: app.log
   maxSizeMb: 5
@@ -77,6 +95,7 @@ database:
   path: ./data/allocation.sqlite
   busyTimeoutMs: 5000
   walMode: true
+
 ```
 
 *Note:* The config is in-memory hence every new execution of everbot will use the latest values from the config. 
