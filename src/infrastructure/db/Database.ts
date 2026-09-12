@@ -1,6 +1,6 @@
 import Database from 'better-sqlite3';
 import { mkdirSync } from 'fs';
-import { dirname } from 'path';
+import { dirname, join } from 'path';
 import { DatabaseConfig } from '../config/ConfigLoader';
 
 /**
@@ -15,7 +15,10 @@ export class AppDatabase {
   constructor(config: DatabaseConfig) {
     mkdirSync(dirname(config.path), { recursive: true });
 
-    this.connection = new Database(config.path);
+    const nativeBinding = (process as NodeJS.Process & { pkg?: boolean }).pkg
+      ? join(dirname(process.execPath), 'better_sqlite3.node')
+      : undefined;
+    this.connection = new Database(config.path, nativeBinding ? { nativeBinding } : undefined);
     if (config.walMode) {
       this.connection.pragma('journal_mode = WAL');
     }

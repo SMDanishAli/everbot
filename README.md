@@ -29,17 +29,21 @@ run it from inside the corresponding `Everbot (...)` folder.
 ### 1. Using as packaged release
 
 Download the zip file for your platform from the latest release and extract it.
-Each zip contains the executable and its matching `config.yaml`:
+Each zip contains the executable, its matching `config.yaml`, and the
+platform-specific SQLite native binding:
 
 ```text
 everbot-linux-x64.zip
 ├── everbot-linux-x64.bin
+├── better_sqlite3.node
 └── config.yaml
 everbot-macos-x64.zip
 ├── everbot-macos-x64.bin
+├── better_sqlite3.node
 └── config.yaml
 everbot-win-x64.zip
 ├── everbot-win-x64.exe
+├── better_sqlite3.node
 └── config.yaml
 ```
 
@@ -48,15 +52,18 @@ After extraction, the folder should look like this:
 ```text
 Everbot (Linux)/
 ├── everbot-linux-x64.bin
+├── better_sqlite3.node
 └── config.yaml
 Everbot (macOs)/
 ├── everbot-macos-x64.bin
+├── better_sqlite3.node
 └── config.yaml
 Everbot (Windows)/
 ├── everbot-win-x64.exe
+├── better_sqlite3.node
 └── config.yaml
 ```
-Keep the executable and config file together. The paths in that
+Keep all three files together. The paths in that
 config are relative to the platform folder:
 
 ```yaml
