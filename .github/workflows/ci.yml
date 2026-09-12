@@ -41,17 +41,17 @@ jobs:
           - os: ubuntu-latest
             folder: "Everbot (Linux)"
             target: node18-linux-x64
-            executable: everbot-linux-x64.bin
+            executable: everbot
             archive: everbot-linux-x64.zip
           - os: macos-13
             folder: "Everbot (macOs)"
             target: node18-macos-x64
-            executable: everbot-macos-x64.bin
+            executable: everbot
             archive: everbot-macos-x64.zip
           - os: windows-latest
             folder: "Everbot (Windows)"
             target: node18-win-x64
-            executable: everbot-win-x64.exe
+            executable: everbot.exe
             archive: everbot-win-x64.zip
     runs-on: ${{ matrix.os }}
 

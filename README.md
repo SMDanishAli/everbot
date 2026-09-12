@@ -34,15 +34,15 @@ platform-specific SQLite native binding:
 
 ```text
 everbot-linux-x64.zip
-├── everbot-linux-x64.bin
+├── everbot
 ├── better_sqlite3.node
 └── config.yaml
 everbot-macos-x64.zip
-├── everbot-macos-x64.bin
+├── everbot
 ├── better_sqlite3.node
 └── config.yaml
 everbot-win-x64.zip
-├── everbot-win-x64.exe
+├── everbot.exe
 ├── better_sqlite3.node
 └── config.yaml
 ```
@@ -51,15 +51,15 @@ After extraction, the folder should look like this:
 
 ```text
 Everbot (Linux)/
-├── everbot-linux-x64.bin
+├── everbot
 ├── better_sqlite3.node
 └── config.yaml
 Everbot (macOs)/
-├── everbot-macos-x64.bin
+├── everbot
 ├── better_sqlite3.node
 └── config.yaml
 Everbot (Windows)/
-├── everbot-win-x64.exe
+├── everbot.exe
 ├── better_sqlite3.node
 └── config.yaml
 ```
@@ -77,14 +77,14 @@ From inside the platform folder, run the macOS or Linux binary with `./`:
 
 ```bash
 cd "/path/to/Everbot (macOs)"
-chmod +x everbot-macos-x64.bin
-./everbot-macos-x64.bin run
-./everbot-macos-x64.bin allocation
+chmod +x everbot
+./everbot run
+./everbot allocation
 ```
 
-Use the matching filename for your platform. `/everbot-macos-x64.bin` is
+Use `everbot` on macOS and Linux. `/everbot` is
 interpreted as an absolute path from the filesystem root, while
-`./everbot-macos-x64.bin` means the binary in the current directory.
+`./everbot` means the binary in the current directory.
 
 If macOS blocks the downloaded binary, allow it in **System Settings >
 Privacy & Security**, then run the command again.
@@ -93,18 +93,18 @@ For Linux, use:
 
 ```bash
 cd "/path/to/Everbot (Linux)"
-chmod +x everbot-linux-x64.bin
-./everbot-linux-x64.bin summary
-./everbot-linux-x64.bin run
-./everbot-linux-x64.bin allocation
+chmod +x everbot
+./everbot summary
+./everbot run
+./everbot allocation
 ```
 On Windows, run the executable from PowerShell:
 
 ```powershell
 cd "C:\path\to\Everbot (Windows)"
-.\everbot-win-x64.exe summary
-.\everbot-win-x64.exe run
-.\everbot-win-x64.exe allocation
+.\everbot.exe summary
+.\everbot.exe run
+.\everbot.exe allocation
 ```
 
 ### 2. Developer's Setup
