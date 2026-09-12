@@ -8,10 +8,10 @@ import { ZeroRobotsError, InsufficientCapacityError } from '../domain/errors';
  * L1 - Category Distribution Strategy.
  *
  * Minimises excess hours and, when tied, prefers allocations using more
- * categories. This keeps category diversity without forcing unnecessary robots
- * into small requests.
- * Enumerates bounded counts per robot type, rather than individual robot
- * subsets. With a fixed number of types this is polynomial in inventory size.
+ * categories, then fewer robots.
+ *
+ * Implemented as a bounded-knapsack DP over (robot type x total hours)
+ * polynomial complexity.
  */
 export class CategoryDistributionStrategy implements IAllocationStrategy {
   readonly name = 'Category Distribution (Level 1)';
@@ -29,8 +29,15 @@ export class CategoryDistributionStrategy implements IAllocationStrategy {
     return new AllocationResult(request.clientId, request.hoursRequested, selected);
   }
 
+  /**
+   * dp[h] tracks, for each total-hours value h reachable using the groups
+   * processed so far, the best (categories used, robots used) pair —
+   * "best" meaning most categories, then fewest robots. Excess hours itself
+   * doesn't need to live in the DP state: since excess = h - requestedHours,
+   * picking the smallest reachable h >= requestedHours after the DP finishes
+   * is equivalent to minimising excess directly.
+   */
   private findBestSelection(robots: Robot[], requestedHours: number): Robot[] | null {
-    let best: Robot[] | null = null;
     const groups = Array.from(
       robots.reduce((byType, robot) => {
         const group = byType.get(robot.type.name) ?? [];
@@ -40,46 +47,80 @@ export class CategoryDistributionStrategy implements IAllocationStrategy {
       }, new Map<string, Robot[]>()),
     );
 
-    const consider = (selection: Robot[], totalHours: number): void => {
-      if (totalHours < requestedHours) return;
+    const maxHours = groups.reduce(
+      (sum, [, group]) => sum + group.length * group[0].workingHours,
+      0,
+    );
 
-      const bestTotal = best?.reduce((sum, robot) => sum + robot.workingHours, 0);
-      const excess = totalHours - requestedHours;
-      const bestExcess = bestTotal === undefined ? Infinity : bestTotal - requestedHours;
-      const categories = new Set(selection.map((robot) => robot.type.name)).size;
-      const bestCategories = best ? new Set(best.map((robot) => robot.type.name)).size : -1;
+    if (maxHours < requestedHours) {
+      return null;
+    }
 
-      if (
-        excess < bestExcess ||
-        (excess === bestExcess && categories > bestCategories) ||
-        (excess === bestExcess &&
-          categories === bestCategories &&
-          selection.length < (best?.length ?? Infinity))
-      ) {
-        best = [...selection];
-      }
-    };
+    const UNREACHABLE = -1;
+    let dpCategories: number[] = new Array(maxHours + 1).fill(UNREACHABLE);
+    let dpCount: number[] = new Array(maxHours + 1).fill(0);
+    dpCategories[0] = 0; // 0 hours, 0 categories, 0 robots: the empty selection.
 
-    let candidates: Array<{ selection: Robot[]; totalHours: number }> = [
-      { selection: [], totalHours: 0 },
-    ];
+    // choices[groupIndex][h] = how many robots of that group were picked to
+    // reach total h, so the winning selection can be reconstructed afterwards.
+    const choices: number[][] = [];
+
     for (const [, group] of groups) {
-      const typeHours = group[0].workingHours;
-      const nextCandidates: Array<{ selection: Robot[]; totalHours: number }> = [];
-      for (const candidate of candidates) {
-        for (let count = 0; count <= group.length; count++) {
-          nextCandidates.push({
-            selection: candidate.selection.concat(group.slice(0, count)),
-            totalHours: candidate.totalHours + count * typeHours,
-          });
+      const hoursPerRobot = group[0].workingHours;
+      const fleetSize = group.length;
+
+      const nextCategories = new Array(maxHours + 1).fill(UNREACHABLE);
+      const nextCount = new Array(maxHours + 1).fill(0);
+      const choiceForGroup = new Array(maxHours + 1).fill(0);
+
+      for (let h = 0; h <= maxHours; h++) {
+        for (let k = 0; k <= fleetSize && k * hoursPerRobot <= h; k++) {
+          const prevH = h - k * hoursPerRobot;
+          if (dpCategories[prevH] === UNREACHABLE) continue;
+
+          const categories = dpCategories[prevH] + (k > 0 ? 1 : 0);
+          const count = dpCount[prevH] + k;
+
+          const better =
+            nextCategories[h] === UNREACHABLE ||
+            categories > nextCategories[h] ||
+            (categories === nextCategories[h] && count < nextCount[h]);
+
+          if (better) {
+            nextCategories[h] = categories;
+            nextCount[h] = count;
+            choiceForGroup[h] = k;
+          }
         }
       }
-      candidates = nextCandidates;
+
+      dpCategories = nextCategories;
+      dpCount = nextCount;
+      choices.push(choiceForGroup);
     }
 
-    for (const candidate of candidates) {
-      consider(candidate.selection, candidate.totalHours);
+    let bestH = -1;
+    for (let h = requestedHours; h <= maxHours; h++) {
+      if (dpCategories[h] !== UNREACHABLE) {
+        bestH = h;
+        break;
+      }
     }
-    return best;
+    if (bestH === -1) {
+      return null;
+    }
+
+    // Backtrack through `choices` to recover how many robots of each type
+    // were used to reach bestH, then materialise the actual Robot instances.
+    const countsPerGroup = new Array(groups.length).fill(0);
+    let h = bestH;
+    for (let i = groups.length - 1; i >= 0; i--) {
+      const hoursPerRobot = groups[i][1][0].workingHours;
+      const k = choices[i][h];
+      countsPerGroup[i] = k;
+      h -= k * hoursPerRobot;
+    }
+
+    return groups.flatMap(([, group], i) => group.slice(0, countsPerGroup[i]));
   }
 }

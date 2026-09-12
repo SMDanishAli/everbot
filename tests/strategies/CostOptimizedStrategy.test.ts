@@ -69,10 +69,23 @@ describe('CostOptimizedStrategy', () => {
   it('uses the defensive insufficient-capacity fallback when no DP state is reachable', () => {
     const solve = (
       strategy as unknown as {
-        solveMinCostKnapsack(robots: Robot[], hoursRequested: number, range: number): Robot[];
+        solveMinCostBoundedKnapsack(
+          groups: Array<{ key: string; robots: Robot[] }>,
+          hoursRequested: number,
+          range: number,
+        ): Robot[];
       }
-    ).solveMinCostKnapsack.bind(strategy);
+    ).solveMinCostBoundedKnapsack.bind(strategy);
 
     expect(() => solve([], 1, 1)).toThrow(InsufficientCapacityError);
+  });
+
+  it('never assigns more robots of a (type, source) group than that group has', () => {
+    // Regression check for the bounded-knapsack rewrite: a group's inner
+    // count loop must be capped at the group's own fleet size, not at range.
+    const result = strategy.allocate(pool({ bravo: 3 }), new ClientRequest(7));
+
+    expect(result.countByType('Bravo')).toBeLessThanOrEqual(3);
+    expect(result.totalHoursProvided).toBeGreaterThanOrEqual(7);
   });
 });
