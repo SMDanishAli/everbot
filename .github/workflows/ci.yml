@@ -20,7 +20,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 18
           cache: npm
 
       - name: Install dependencies
@@ -39,17 +39,17 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
-            folder: "Everbot (Linux)"
+            folder: "everbot-linux"
             target: node18-linux-x64
             executable: everbot
             archive: everbot-linux-x64.zip
           - os: macos-13
-            folder: "Everbot (macOs)"
+            folder: "everbot-macos"
             target: node18-macos-x64
             executable: everbot
             archive: everbot-macos-x64.zip
           - os: windows-latest
-            folder: "Everbot (Windows)"
+            folder: "everbot-windows"
             target: node18-win-x64
             executable: everbot.exe
             archive: everbot-win-x64.zip
@@ -65,10 +65,17 @@ jobs:
           node-version: 18.20.8
           cache: npm
 
+      # Fix for node-gyp on Windows runner with Node 18
+      - name: Fix node-gyp for Visual Studio on Windows
+        if: matrix.os == 'windows-latest'
+        run: |
+          npm install -g node-gyp@latest
+          npm config set node_gyp (Get-Command node-gyp).Path
+
       - name: Install dependencies
         run: npm ci
 
-      - name: Build
+      - name: Build JS bundle
         run: npm run build
 
       - name: Install pkg
@@ -78,8 +85,14 @@ jobs:
         shell: bash
         run: |
           mkdir -p "artifacts/${{ matrix.folder }}"
+          
+          # Copy static asset dependencies
           cp config.yaml "artifacts/${{ matrix.folder }}/config.yaml"
+          
+          # Copy native SQLite bindings compiled for this specific host OS
           cp node_modules/better-sqlite3/build/Release/better_sqlite3.node "artifacts/${{ matrix.folder }}/better_sqlite3.node"
+          
+          # Package JavaScript with pkg
           pkg dist/cli/bundle.js --target "${{ matrix.target }}" --output "artifacts/${{ matrix.folder }}/${{ matrix.executable }}"
           chmod +x "artifacts/${{ matrix.folder }}/${{ matrix.executable }}" 2>/dev/null || true
 
@@ -88,7 +101,7 @@ jobs:
         shell: bash
         run: |
           cd "artifacts/${{ matrix.folder }}"
-          zip -j "../../${{ matrix.archive }}" "${{ matrix.executable }}" config.yaml better_sqlite3.node
+          zip -r "../../${{ matrix.archive }}" .
 
       - name: Create Windows zip
         if: matrix.os == 'windows-latest'
@@ -99,7 +112,7 @@ jobs:
       - name: Upload platform zip artifact
         uses: actions/upload-artifact@v4
         with:
-          name: everbot-${{ matrix.archive }}
+          name: ${{ matrix.archive }}
           path: ${{ matrix.archive }}
           if-no-files-found: error
 
@@ -111,12 +124,12 @@ jobs:
       - name: Download platform artifacts
         uses: actions/download-artifact@v4
         with:
+          path: release-assets
           pattern: everbot-*.zip
-          path: artifacts
           merge-multiple: true
 
       - name: Publish release assets
         uses: softprops/action-gh-release@v2
         with:
-          files: artifacts/*.zip
+          files: release-assets/*.zip
           generate_release_notes: true
