@@ -109,6 +109,9 @@ cd "C:\path\to\Everbot (Windows)"
 
 ### 2. Developer's Setup
 
+- Install Node.js 18+ on your machine
+- Clone the repo and run the following:
+
 ```bash
 npm install
 npm run build
