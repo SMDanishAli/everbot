@@ -181,8 +181,6 @@ src/
 │   ├── AllocationService.ts          # Run the given strategy & persist the result
 │   ├── InventoryService.ts           # Get available resources
 │   ├── AllocationComparator.ts       # Compare L1 and L2 efficiency
-│   ├── CostCalculator.ts             # Cost calculations
-│   └── UtilizationCalculator.ts      # Utilization calculation for summaries
 ├── strategies/
 │   ├── IAllocationStrategy.ts        # Interface implemented by all other strategies 
 │   ├── CategoryDistributionStrategy.ts # L1
@@ -206,6 +204,5 @@ src/
 - 2. The allocation history is persisted in the sqlite database which is stateless and file-based. The application is asssumed to be run on a single-host machine (Not in centralized / file-sharing system).
 - 3. The WAL mode (enabled by default in config.yaml) allows for concurrent reads and writes (across multiple terminal sessions). However, the application isn't fully safe in terms of concurrency because the current inventory is only kept in-memory (as per the spec document)
 - 4. For multi-client input, L3 (Standby Activation Strategy) is always used implicitly which internally uses cost-optimised strategy. The CLI prints this in yellow color clearly.
-
 
 
