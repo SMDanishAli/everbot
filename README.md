@@ -14,7 +14,7 @@ everbot <command>
 
 | Command | Description | Options / Output |
 | --- | --- | --- |
-| `run` | Starts an interactive allocation session. Prompts for one or more client work-hour requests and an allocation strategy. | Supports L1, L2, and L3 strategies. Level 2 also prints the Level 1 vs Level 2 cost comparison. |
+| `run` | Starts an interactive allocation session. Prompts for one or more client work-hour requests and an allocation strategy. | Supports L1, L2, and L3 strategies. Level 2, Level 3, and every multi-client allocation print the Level 1 vs Level 2 cost comparison. Multi-client runs also print Level 4 totals and utilisation. |
 | `allocation` | Displays persisted allocation history. | Reads records from the configured SQLite database. |
 | `summary` | Displays current inventory, charging cost, and robot utilisation. | Uses the configured inventory and allocation history. |
 | `reset` | Clears allocation history. | Add `--hard` to drop all application SQLite tables. |
@@ -160,7 +160,9 @@ Key benefits:
 - Robot types and inventory can be changed in `config.yaml` without changing code.
 - Allocation rules are kept separate from the database, making the application
   easier to test and maintain.
-- SQLite uses WAL mode to support safer concurrent access.
+- SQLite uses WAL mode and an immediate write transaction around each allocation
+  to re-check capacity and persist the allocation safely when multiple sessions
+  run at the same time.
 - The project follows a test-driven approach, with automated tests covering
   allocation strategies, services, CLI behavior, and database operations.
 
@@ -202,7 +204,7 @@ src/
 
 - 1. Robot availability constraints follow the daily allocation quota. This mean the robots availability will be reset at midnight. We do not cater for the working duration of the robot as it is beyond the scope (as per the spec document). If a robot starts work at 11 pm, it will be reset at 12am eventhough it has work duration of 3 hours
 - 2. The allocation history is persisted in the sqlite database which is stateless and file-based. The application is asssumed to be run on a single-host machine (Not in centralized / file-sharing system).
-- 3. The WAL mode (enabled by default in config.yaml) allows for concurrent reads and writes (across multiple terminal sessions). However, the application isn't fully safe in terms of concurrency because the current inventory is only kept in-memory (as per the spec document)
+- 3. The configured inventory is loaded in memory, while allocation history is
+  stored in SQLite. Each allocation re-reads the day's history and uses an
+  immediate SQLite transaction for the final capacity check and history write.
 - 4. For multi-client input, L3 (Standby Activation Strategy) is always used implicitly which internally uses cost-optimised strategy. The CLI prints this in yellow color clearly.
-
-

@@ -26,4 +26,16 @@ export class AppDatabase {
   close(): void {
     this.connection.close();
   }
+
+  async immediateTransaction<T>(callback: () => Promise<T>): Promise<T> {
+    this.connection.exec('BEGIN IMMEDIATE');
+    try {
+      const result = await callback();
+      this.connection.exec('COMMIT');
+      return result;
+    } catch (err) {
+      this.connection.exec('ROLLBACK');
+      throw err;
+    }
+  }
 }

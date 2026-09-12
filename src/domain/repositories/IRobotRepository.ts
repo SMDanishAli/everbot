@@ -15,8 +15,9 @@ export interface IRobotRepository {
   getAvailableInventory(): Promise<RobotInventoryCount[]>;
 
   /**
-   * Atomically checks availability and decrements it in one transaction.
-   * Throws if any requested count exceeds what's available.
+   * Checks current availability and decrements the process-local view.
+   * AllocationService supplies the database transaction that makes this check
+   * and the corresponding history write atomic across processes.
    */
   allocate(selections: Array<{ type: string; source: RobotSource; count: number }>): Promise<void>;
 }

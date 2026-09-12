@@ -217,6 +217,7 @@ export async function runSession(): Promise<void> {
     robotRepository,
     historyRepository,
     logger,
+    db,
   );
 
   const cli = new CliController(allocationService, logger);

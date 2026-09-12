@@ -6,23 +6,24 @@ import { ILogger } from '../logging/ILogger';
 import { InitialInventoryEntry } from '../config/ConfigLoader';
 
 /**
- * Keeps the current session's inventory in memory. The configured counts are
- * loaded at process startup, so every new process starts with a fresh day.
+ * Keeps configured inventory in memory. Current availability is recalculated
+ * from today's SQLite allocation history on every query.
  */
 export class SqliteRobotRepository implements IRobotRepository {
+  private readonly configuredInventory: RobotInventoryCount[];
   private inventory: RobotInventoryCount[];
-  private historyApplied = false;
 
   constructor(
     private readonly db: AppDatabase,
     private readonly logger: ILogger,
     initialInventory: InitialInventoryEntry[] = [],
   ) {
-    this.inventory = initialInventory.map(({ type, source, count }) => ({
+    this.configuredInventory = initialInventory.map(({ type, source, count }) => ({
       type,
       source: RobotSource[source],
       available: count,
     }));
+    this.inventory = this.configuredInventory.map((row) => ({ ...row }));
   }
 
   async getInventory(): Promise<RobotInventoryCount[]> {
@@ -30,10 +31,6 @@ export class SqliteRobotRepository implements IRobotRepository {
   }
 
   async getAvailableInventory(): Promise<RobotInventoryCount[]> {
-    if (this.historyApplied) {
-      return this.inventory.map((row) => ({ ...row }));
-    }
-
     const usage = this.db.connection
       .prepare(
         `SELECT type, source, COUNT(*) AS allocated
@@ -48,11 +45,10 @@ export class SqliteRobotRepository implements IRobotRepository {
       usage.map((row) => [`${row.type}:${row.source}`, row.allocated]),
     );
 
-    this.inventory = this.inventory.map((row) => ({
+    this.inventory = this.configuredInventory.map((row) => ({
       ...row,
       available: Math.max(0, row.available - (allocated.get(`${row.type}:${row.source}`) ?? 0)),
     }));
-    this.historyApplied = true;
     return this.inventory.map((row) => ({ ...row }));
   }
 
@@ -60,8 +56,9 @@ export class SqliteRobotRepository implements IRobotRepository {
     selections: Array<{ type: string; source: RobotSource; count: number }>,
   ): Promise<void> {
     try {
+      const availableInventory = await this.getAvailableInventory();
       for (const { type, source, count } of selections) {
-        const row = this.inventory.find((item) => item.type === type && item.source === source);
+        const row = availableInventory.find((item) => item.type === type && item.source === source);
         const available = row?.available ?? 0;
 
         if (available < count) {

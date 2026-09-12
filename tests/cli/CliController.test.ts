@@ -26,7 +26,10 @@ describe('CliController', () => {
   };
 
   let service: jest.Mocked<
-    Pick<AllocationService, 'allocate' | 'allocateMany' | 'allocateWithComparison'>
+    Pick<
+      AllocationService,
+      'allocate' | 'allocateMany' | 'allocateManyWithComparison' | 'allocateWithComparison'
+    >
   >;
   let controller: CliController;
 
@@ -35,6 +38,7 @@ describe('CliController', () => {
     service = {
       allocate: jest.fn(),
       allocateMany: jest.fn(),
+      allocateManyWithComparison: jest.fn(),
       allocateWithComparison: jest.fn(),
     };
     controller = new CliController(service as unknown as AllocationService, logger);
@@ -85,6 +89,30 @@ describe('CliController', () => {
       'Multi-client mode: Auto selecting L3-style allocation (Cost Optimised + Standby Activation).',
     );
     expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Hours requested'));
+    expect(console.log).toHaveBeenCalledWith(expect.stringContaining('=== Multi-client Summary ==='));
+    expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Average utilisation'));
+  });
+
+  it('prints an L1 vs L2 comparison for each multi-client allocation', async () => {
+    const results = [
+      new AllocationResult('client-1', 12, [new Robot(bravo)]),
+      new AllocationResult('client-2', 4, [new Robot(bravo)]),
+    ];
+    service.allocateManyWithComparison.mockResolvedValue({
+      results,
+      comparisons: results.map((result) => ({
+        categoryDistribution: result,
+        costOptimized: result,
+        costDifference: 0,
+        cheaper: 'equal' as const,
+      })),
+    });
+    (prompt as jest.Mock).mockResolvedValue('12, 4');
+
+    await controller.run(strategy, strategy, strategy, strategy);
+
+    expect(service.allocateManyWithComparison).toHaveBeenCalled();
+    expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Level 1 vs Level 2'));
   });
 
   it('allocates space-separated clients as a shared multi-client request', async () => {

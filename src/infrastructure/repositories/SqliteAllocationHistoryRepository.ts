@@ -54,7 +54,7 @@ export class SqliteAllocationHistoryRepository implements IAllocationHistoryRepo
   }
 
   async save(result: AllocationResult, strategyName: string): Promise<void> {
-    const save = this.db.connection.transaction(() => {
+    const save = () => {
       const insert = this.db.connection.prepare(`
         INSERT INTO allocation_history
           (allocation_id, hours_requested, strategy_name, type, source, total_hours_provided, total_cost)
@@ -79,9 +79,13 @@ export class SqliteAllocationHistoryRepository implements IAllocationHistoryRepo
             .run(allocationId, allocationId);
         }
       }
-    });
+    };
 
-    save();
+    if (this.db.connection.inTransaction) {
+      save();
+    } else {
+      this.db.connection.transaction(save)();
+    }
   }
 
 }

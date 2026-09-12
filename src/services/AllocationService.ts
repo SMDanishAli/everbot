@@ -8,6 +8,7 @@ import { DomainError } from '../domain/errors';
 import { ILogger } from '../infrastructure/logging/ILogger';
 import { MultiClientAllocator } from '../strategies/MultiClientAllocator';
 import { AllocationComparator, ComparisonReport } from './AllocationComparator';
+import { AppDatabase } from '../infrastructure/db/Database';
 
 /**
  * Run the given strategy, persist the result + updated inventory, log the outcome.
@@ -18,16 +19,17 @@ export class AllocationService {
     private readonly robotRepository: IRobotRepository,
     private readonly historyRepository: IAllocationHistoryRepository,
     private readonly logger: ILogger,
+    private readonly db?: AppDatabase,
   ) {}
 
   async allocate(strategy: IAllocationStrategy, request: ClientRequest): Promise<AllocationResult> {
     try {
-      const availableRobots = await this.inventoryService.getAvailableRobots();
-      const result = strategy.allocate(availableRobots, request);
-
-      await this.persistAllocation(result, strategy.name);
-
-      return result;
+      return await this.withTransaction(async () => {
+        const availableRobots = await this.inventoryService.getAvailableRobots();
+        const result = strategy.allocate(availableRobots, request);
+        await this.persistAllocation(result, strategy.name);
+        return result;
+      });
     } catch (err) {
       this.logAllocationError(err, 'Allocation');
       throw err;
@@ -41,19 +43,19 @@ export class AllocationService {
     comparisonTargetStrategy: IAllocationStrategy = strategy,
   ): Promise<{ result: AllocationResult; comparison: ComparisonReport }> {
     try {
-      const availableRobots = await this.inventoryService.getAvailableRobots();
-      const comparisonResult = comparisonStrategy.allocate(availableRobots, request);
-      const result = strategy.allocate(availableRobots, request);
-      const comparisonTarget = comparisonTargetStrategy === strategy
-        ? result
-        : comparisonTargetStrategy.allocate(availableRobots, request);
-
-      await this.persistAllocation(result, strategy.name);
-
-      return {
-        result,
-        comparison: AllocationComparator.compare(comparisonResult, comparisonTarget),
-      };
+      return await this.withTransaction(async () => {
+        const availableRobots = await this.inventoryService.getAvailableRobots();
+        const comparisonResult = comparisonStrategy.allocate(availableRobots, request);
+        const result = strategy.allocate(availableRobots, request);
+        const comparisonTarget = comparisonTargetStrategy === strategy
+          ? result
+          : comparisonTargetStrategy.allocate(availableRobots, request);
+        await this.persistAllocation(result, strategy.name);
+        return {
+          result,
+          comparison: AllocationComparator.compare(comparisonResult, comparisonTarget),
+        };
+      });
     } catch (err) {
       this.logAllocationError(err, 'Allocation');
       throw err;
@@ -65,22 +67,55 @@ export class AllocationService {
     requests: ClientRequest[],
   ): Promise<AllocationResult[]> {
     try {
-      const availableRobots = await this.inventoryService.getAvailableRobots();
-      const results = new MultiClientAllocator(strategy).allocateAll(availableRobots, requests);
-      const selections = results.flatMap((result) =>
-        result.assignedRobots.map((robot) => ({
-          type: robot.type.name,
-          source: robot.source,
-          count: 1,
-        })),
-      );
+      return await this.withTransaction(async () => {
+        const availableRobots = await this.inventoryService.getAvailableRobots();
+        return this.persistMany(
+          new MultiClientAllocator(strategy).allocateAll(availableRobots, requests),
+          strategy.name,
+        );
+      });
+    } catch (err) {
+      this.logAllocationError(err, 'Multi-client allocation');
+      throw err;
+    }
+  }
 
-      await this.robotRepository.allocate(selections);
-      for (const result of results) {
-        await this.historyRepository.save(result, strategy.name);
-      }
-
-      return results;
+  async allocateManyWithComparison(
+    strategy: IAllocationStrategy,
+    comparisonStrategy: IAllocationStrategy,
+    comparisonTargetStrategy: IAllocationStrategy,
+    requests: ClientRequest[],
+  ): Promise<{
+    results: AllocationResult[];
+    comparisons: ComparisonReport[];
+  }> {
+    try {
+      return await this.withTransaction(async () => {
+        const availableRobots = await this.inventoryService.getAvailableRobots();
+        const results = new MultiClientAllocator(strategy).allocateAll(availableRobots, requests);
+        const level1Results = new MultiClientAllocator(comparisonStrategy).allocateAll(
+          availableRobots,
+          requests,
+        );
+        const level2Results = new MultiClientAllocator(comparisonTargetStrategy).allocateAll(
+          availableRobots,
+          requests,
+        );
+        await this.persistMany(results, strategy.name);
+        const level1ByClient = new Map(level1Results.map((result) => [result.clientId, result]));
+        const level2ByClient = new Map(level2Results.map((result) => [result.clientId, result]));
+        return {
+          results,
+          comparisons: results.map((result) => {
+            const level1 = level1ByClient.get(result.clientId);
+            const level2 = level2ByClient.get(result.clientId);
+            if (!level1 || !level2) {
+              throw new Error(`Missing comparison result for ${result.clientId}.`);
+            }
+            return AllocationComparator.compare(level1, level2);
+          }),
+        };
+      });
     } catch (err) {
       this.logAllocationError(err, 'Multi-client allocation');
       throw err;
@@ -107,5 +142,28 @@ export class AllocationService {
       })),
     );
     await this.historyRepository.save(result, strategyName);
+  }
+
+  private async persistMany(
+    results: AllocationResult[],
+    strategyName: string,
+  ): Promise<AllocationResult[]> {
+    const selections = results.flatMap((result) =>
+      result.assignedRobots.map((robot) => ({
+        type: robot.type.name,
+        source: robot.source,
+        count: 1,
+      })),
+    );
+
+    await this.robotRepository.allocate(selections);
+    for (const result of results) {
+      await this.historyRepository.save(result, strategyName);
+    }
+    return results;
+  }
+
+  private withTransaction<T>(callback: () => Promise<T>): Promise<T> {
+    return this.db ? this.db.immediateTransaction(callback) : callback();
   }
 }

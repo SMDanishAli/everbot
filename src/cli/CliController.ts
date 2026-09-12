@@ -7,6 +7,7 @@ import { prompt } from './prompts';
 import { ILogger } from '../infrastructure/logging/ILogger';
 import { ComparisonFormatter } from './formatters/ComparisonFormatter';
 import { ClientHoursParser } from '../parsers/ClientHoursParser';
+import { MultiClientSummaryFormatter } from './formatters/MultiClientSummaryFormatter';
 
 const formatMultiClientNotice = (message: string): string =>
   process.stdout.isTTY ? `\x1b[33m${message}\x1b[0m` : message;
@@ -62,15 +63,30 @@ export class CliController {
             'Multi-client mode: Auto selecting L3-style allocation (Cost Optimised + Standby Activation).',
           ),
         );
-        const results = await this.allocationService.allocateMany(
-          multiClientL3Strategy,
-          requests,
-        );
+        const allocation = comparisonStrategy
+          ? await this.allocationService.allocateManyWithComparison(
+              multiClientL3Strategy,
+              comparisonStrategy,
+              comparisonTargetStrategy ?? comparisonStrategy,
+              requests,
+            )
+          : {
+              results: await this.allocationService.allocateMany(multiClientL3Strategy, requests),
+              comparisons: [],
+            };
+        const { results, comparisons } = allocation;
         console.log(
           results
-            .map((result) => AssignmentFormatter.format(result, multiClientL3Strategy.name))
+            .map((result, index) => {
+              const assignment = AssignmentFormatter.format(result, multiClientL3Strategy.name);
+              const comparison = comparisons[index]
+                ? `\n${ComparisonFormatter.format(comparisons[index])}`
+                : '';
+              return `${assignment}${comparison}`;
+            })
             .join('\n\n'),
         );
+        console.log(`\n${MultiClientSummaryFormatter.format(results)}`);
       }
     } catch (err) {
       // Already logged inside AllocationService — just present it to the user here.

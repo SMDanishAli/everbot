@@ -50,7 +50,7 @@ describe('SqliteRobotRepository', () => {
     expect(await repository.getInventory()).toEqual([]);
   });
 
-  it('subtracts today’s allocation history once and caches the result', async () => {
+  it('re-reads today’s allocation history for each availability query', async () => {
     database.connection
       .prepare(
         `INSERT INTO allocation_history
@@ -67,7 +67,7 @@ describe('SqliteRobotRepository', () => {
 
     database.connection.prepare('DELETE FROM allocation_history').run();
     expect(await repository.getAvailableInventory()).toEqual([
-      { type: 'Bravo', source: RobotSource.ACTIVE, available: 1 },
+      { type: 'Bravo', source: RobotSource.ACTIVE, available: 2 },
       { type: 'Bravo', source: RobotSource.STANDBY, available: 1 },
     ]);
   });

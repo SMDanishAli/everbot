@@ -116,6 +116,42 @@ describe('AllocationService', () => {
     expect(historyRepository.save).toHaveBeenCalledTimes(2);
   });
 
+  it('compares each multi-client allocation while persisting only the selected results', async () => {
+    const secondRequest = new ClientRequest(3, 'client-2');
+    const secondRobot = new Robot(bravo);
+    const categoryStrategy: IAllocationStrategy = {
+      name: 'L1',
+      allocate: jest
+        .fn()
+        .mockReturnValueOnce(new AllocationResult('client-1', 3, [robot]))
+        .mockReturnValueOnce(new AllocationResult('client-2', 3, [secondRobot])),
+    };
+    const optimizedStrategy: IAllocationStrategy = {
+      name: 'L2',
+      allocate: jest
+        .fn()
+        .mockReturnValueOnce(new AllocationResult('client-1', 3, [robot]))
+        .mockReturnValueOnce(new AllocationResult('client-2', 3, [secondRobot])),
+    };
+    strategy.allocate = jest
+      .fn()
+      .mockReturnValueOnce(new AllocationResult('client-1', 3, [robot]))
+      .mockReturnValueOnce(new AllocationResult('client-2', 3, [secondRobot]));
+    inventoryService.getAvailableRobots.mockResolvedValue([robot, secondRobot]);
+
+    const allocation = await service().allocateManyWithComparison(
+      strategy,
+      categoryStrategy,
+      optimizedStrategy,
+      [request, secondRequest],
+    );
+
+    expect(allocation.results).toHaveLength(2);
+    expect(allocation.comparisons).toHaveLength(2);
+    expect(robotRepository.allocate).toHaveBeenCalledTimes(1);
+    expect(historyRepository.save).toHaveBeenCalledTimes(2);
+  });
+
   it('logs multi-client failures and rethrows them', async () => {
     const error = new Error('allocation failed');
     inventoryService.getAvailableRobots.mockRejectedValue(error);
