@@ -185,6 +185,7 @@ src/
   2. Add `persist: true` in config.yaml - if false, sqlite will not be used and allocation will only stay in-memory. This can be useful for testing done during development.
   3. Save total cost and utilization stats in the db - this can be used for graphical analysis against time periods
   4. Currently, CI only runs on new tag (i.e. new release). I did it on purpose since I am using github shared runners. In an actual environment where multiple contributors use different branches, the test stage should run on every major commit.
+  5. The packaged release (refer below) needs more work for windows and macos targets. This is still considered experimental (again because using github shared runners add further complexity)
 
 ## AI Usage
 
