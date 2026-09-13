@@ -1,4 +1,4 @@
-import { Robot } from '../domain/entities/Robot';
+import { Robot, RobotSource } from '../domain/entities/Robot';
 import { ClientRequest } from '../domain/entities/ClientRequest';
 import { AllocationResult } from '../domain/entities/AllocationResult';
 import { IAllocationStrategy } from './IAllocationStrategy';
@@ -17,11 +17,15 @@ export class CategoryDistributionStrategy implements IAllocationStrategy {
   readonly name = 'Category Distribution (Level 1)';
 
   allocate(availableRobots: Robot[], request: ClientRequest): AllocationResult {
-    if (availableRobots.length === 0) {
+    // Level 1 has no concept of standby activation, so it must never draw
+    // from the standby pool even if the caller hands it a mixed pool.
+    const activeRobots = availableRobots.filter((robot) => robot.source === RobotSource.ACTIVE);
+
+    if (activeRobots.length === 0) {
       throw new ZeroRobotsError();
     }
 
-    const selected = this.findBestSelection(availableRobots, request.hoursRequested);
+    const selected = this.findBestSelection(activeRobots, request.hoursRequested);
     if (!selected) {
       throw new InsufficientCapacityError();
     }

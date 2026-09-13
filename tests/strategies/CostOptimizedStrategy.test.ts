@@ -1,5 +1,5 @@
 import { CostOptimizedStrategy } from '../../src/strategies/CostOptimizedStrategy';
-import { Robot } from '../../src/domain/entities/Robot';
+import { Robot, RobotSource } from '../../src/domain/entities/Robot';
 import { RobotType } from '../../src/domain/entities/RobotType';
 import { ClientRequest } from '../../src/domain/entities/ClientRequest';
 import { ZeroRobotsError, InsufficientCapacityError } from '../../src/domain/errors';
@@ -87,5 +87,44 @@ describe('CostOptimizedStrategy', () => {
 
     expect(result.countByType('Bravo')).toBeLessThanOrEqual(3);
     expect(result.totalHoursProvided).toBeGreaterThanOrEqual(7);
+  });
+
+  it('ignores standby robots via allocate() — Level 2 has no standby-activation concept', () => {
+    // 1 active of each type = 16h active capacity, plus a standby pool that
+    // alone could cover the request. Level 2's public allocate() must not
+    // touch the standby pool (only the Level 3 wrapper may, via allocateFromPool).
+    const activeOnly = pool({ bravo: 1, charlie: 1, delta: 1 });
+    const standbyOnly = [
+      new Robot(bravo, RobotSource.STANDBY),
+      new Robot(charlie, RobotSource.STANDBY),
+      new Robot(delta, RobotSource.STANDBY),
+    ];
+    const mixedPool = [...activeOnly, ...standbyOnly];
+
+    expect(() => strategy.allocate(mixedPool, new ClientRequest(21))).toThrow(
+      InsufficientCapacityError,
+    );
+
+    const result = strategy.allocate(mixedPool, new ClientRequest(16));
+    expect(result.assignedRobots.every((robot) => robot.source === RobotSource.ACTIVE)).toBe(true);
+  });
+
+  it('throws ZeroRobotsError from allocate() when only standby robots are available', () => {
+    const standbyOnly = [new Robot(bravo, RobotSource.STANDBY)];
+    expect(() => strategy.allocate(standbyOnly, new ClientRequest(3))).toThrow(ZeroRobotsError);
+  });
+
+  it('allocateFromPool ignores source and can allocate purely from a standby pool', () => {
+    // This is what StandbyActivationStrategy relies on for the standby top-up:
+    // allocateFromPool must work even when every robot given to it is STANDBY.
+    const standbyOnly = [
+      new Robot(bravo, RobotSource.STANDBY),
+      new Robot(charlie, RobotSource.STANDBY),
+    ];
+
+    const result = strategy.allocateFromPool(standbyOnly, new ClientRequest(5));
+
+    expect(result.assignedRobots.every((robot) => robot.source === RobotSource.STANDBY)).toBe(true);
+    expect(result.totalHoursProvided).toBeGreaterThanOrEqual(5);
   });
 });

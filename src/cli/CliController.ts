@@ -53,7 +53,9 @@ export class CliController {
             comparisonTargetStrategy,
           );
           console.log(AssignmentFormatter.format(result, strategy.name));
-          console.log(ComparisonFormatter.format(comparison));
+          if (comparison) {
+            console.log(ComparisonFormatter.format(comparison));
+          }
         } else {
           const result = await this.allocationService.allocate(strategy, requests[0]);
           console.log(AssignmentFormatter.format(result, strategy.name));

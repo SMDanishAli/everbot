@@ -5,6 +5,15 @@ export class ErrorFormatter {
     if (err instanceof DomainError) {
       return `Error: ${err.message}`;
     }
-    return 'An unexpected error occurred. Check the logs for details.';
+    else if (err instanceof Error) {
+      return `Error: ${err.message}`;
+    }
+    else if (err instanceof String) {
+      return `Error: ${err}`;
+    }
+    else {
+      return 'An unexpected error occurred. Check the logs for details.';
+    }
+
   }
 }

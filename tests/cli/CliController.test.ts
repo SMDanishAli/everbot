@@ -160,6 +160,24 @@ describe('CliController', () => {
     expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Level 1 Cost: $2'));
   });
 
+  it('prints the result without a comparison block when the service reports no comparison is available', async () => {
+    // Regression test: a request that only Level 3's standby activation can
+    // fulfil makes the L1/L2 comparison strategies infeasible, so the service
+    // returns `comparison: undefined`. The controller must still print the
+    // primary result and simply omit the comparison section, not crash.
+    const result = new AllocationResult('client-1', 21, [new Robot(bravo)]);
+    const comparisonStrategy: IAllocationStrategy = {
+      name: 'L1',
+      allocate: jest.fn(),
+    };
+    service.allocateWithComparison.mockResolvedValue({ result, comparison: undefined });
+    (prompt as jest.Mock).mockResolvedValue('21');
+
+    await controller.run(strategy, strategy, comparisonStrategy);
+
+    expect(console.log).not.toHaveBeenCalledWith(expect.stringContaining('Level 1 vs Level 2'));
+  });
+
   it('reports invalid zero-hour input without calling the allocation service', async () => {
     (prompt as jest.Mock).mockResolvedValue('0');
 

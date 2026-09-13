@@ -20,8 +20,10 @@ import { ZeroRobotsError, InsufficientCapacityError } from '../domain/errors';
  * The standby top-up is always cost-optimised, regardless of which base
  * strategy is wrapped (spec: "Choose the cost-optimised standby option" —
  * this is a fixed Level 3 rule, not delegated to the base strategy choice).
- * Reuses CostOptimizedStrategy against the standby pool for exactly the
- * shortfall amount, so the same min-cost knapsack logic isn't duplicated.
+ * Reuses CostOptimizedStrategy's allocateFromPool against the standby pool
+ * for exactly the shortfall amount, so the same min-cost knapsack logic
+ * isn't duplicated (allocate() itself would reject a STANDBY-only pool,
+ * since Level 2 on its own never draws from standby).
  *
  * The strategy is stateless: the caller owns pool depletion and passes the
  * currently available active and standby robots on every allocation.
@@ -58,7 +60,7 @@ export class StandbyActivationStrategy implements IAllocationStrategy {
       throw new InsufficientCapacityError();
     }
 
-    const standbySelection = this.standbyOptimizer.allocate(
+    const standbySelection = this.standbyOptimizer.allocateFromPool(
       standbyRobots,
       new ClientRequest(shortfall, request.clientId),
     );

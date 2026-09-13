@@ -65,23 +65,48 @@ export class AllocationService {
     comparisonStrategy: IAllocationStrategy,
     request: ClientRequest,
     comparisonTargetStrategy: IAllocationStrategy = strategy,
-  ): Promise<{ result: AllocationResult; comparison: ComparisonReport }> {
+  ): Promise<{ result: AllocationResult; comparison?: ComparisonReport }> {
     try {
       return await this.withTransaction(async () => {
         const availableRobots = await this.inventoryService.getAvailableRobots();
-        const comparisonResult = comparisonStrategy.allocate(availableRobots, request);
+        // Compute the primary (requested) strategy's result first: comparison
+        // strategies are informational only and, since Level 1/2 never draw on
+        // standby, they legitimately can't cover a request that only Level 3's
+        // standby activation can fulfil. That must not block the real result.
         const result = strategy.allocate(availableRobots, request);
-        const comparisonTarget = comparisonTargetStrategy === strategy
-          ? result
-          : comparisonTargetStrategy.allocate(availableRobots, request);
+        const comparison = this.tryCompare(
+          () => comparisonStrategy.allocate(availableRobots, request),
+          () =>
+            comparisonTargetStrategy === strategy
+              ? result
+              : comparisonTargetStrategy.allocate(availableRobots, request),
+        );
         await this.persistAllocation(result, strategy.name);
-        return {
-          result,
-          comparison: compareAllocations(comparisonResult, comparisonTarget),
-        };
+        return { result, comparison };
       });
     } catch (err) {
       this.logAllocationError(err, 'Allocation');
+      throw err;
+    }
+  }
+
+  /**
+   * Runs the two comparison-side allocations and pairs them up, but treats an
+   * expected domain failure (e.g. InsufficientCapacityError when the request
+   * exceeds active-only capacity) as "no comparison available" rather than
+   * failing the whole operation — the primary result may still be valid even
+   * when the Level 1/2 baselines alone can't cover the request.
+   */
+  private tryCompare(
+    getCategoryDistribution: () => AllocationResult,
+    getCostOptimized: () => AllocationResult,
+  ): ComparisonReport | undefined {
+    try {
+      return compareAllocations(getCategoryDistribution(), getCostOptimized());
+    } catch (err) {
+      if (err instanceof DomainError) {
+        return undefined;
+      }
       throw err;
     }
   }
@@ -111,37 +136,59 @@ export class AllocationService {
     requests: ClientRequest[],
   ): Promise<{
     results: AllocationResult[];
-    comparisons: ComparisonReport[];
+    comparisons: Array<ComparisonReport | undefined>;
   }> {
     try {
       return await this.withTransaction(async () => {
         const availableRobots = await this.inventoryService.getAvailableRobots();
+        // Compute the primary (requested) strategy's results first: the
+        // comparison strategies are informational only, and since Level 1/2
+        // never draw on standby they legitimately can't cover a batch that
+        // only Level 3's standby activation can fulfil. That must not block
+        // the real results.
         const results = new MultiClientAllocator(strategy).allocateAll(availableRobots, requests);
-        const level1Results = new MultiClientAllocator(comparisonStrategy).allocateAll(
-          availableRobots,
-          requests,
-        );
-        const level2Results = new MultiClientAllocator(comparisonTargetStrategy).allocateAll(
-          availableRobots,
-          requests,
-        );
         await this.persistMany(results, strategy.name);
-        const level1ByClient = new Map(level1Results.map((result) => [result.clientId, result]));
-        const level2ByClient = new Map(level2Results.map((result) => [result.clientId, result]));
-        return {
+        const comparisons = this.tryCompareMany(
+          () => new MultiClientAllocator(comparisonStrategy).allocateAll(availableRobots, requests),
+          () =>
+            new MultiClientAllocator(comparisonTargetStrategy).allocateAll(availableRobots, requests),
           results,
-          comparisons: results.map((result) => {
-            const level1 = level1ByClient.get(result.clientId);
-            const level2 = level2ByClient.get(result.clientId);
-            if (!level1 || !level2) {
-              throw new Error(`Missing comparison result for ${result.clientId}.`);
-            }
-            return compareAllocations(level1, level2);
-          }),
-        };
+        );
+        return { results, comparisons };
       });
     } catch (err) {
       this.logAllocationError(err, 'Multi-client allocation');
+      throw err;
+    }
+  }
+
+  /**
+   * Batch counterpart to tryCompare: if either comparison-strategy batch
+   * can't be computed (e.g. a client's request exceeds active-only capacity),
+   * every entry falls back to "no comparison available" rather than failing
+   * the whole multi-client allocation.
+   */
+  private tryCompareMany(
+    getCategoryDistributionResults: () => AllocationResult[],
+    getCostOptimizedResults: () => AllocationResult[],
+    results: AllocationResult[],
+  ): Array<ComparisonReport | undefined> {
+    try {
+      const level1ByClient = new Map(
+        getCategoryDistributionResults().map((result) => [result.clientId, result]),
+      );
+      const level2ByClient = new Map(
+        getCostOptimizedResults().map((result) => [result.clientId, result]),
+      );
+      return results.map((result) => {
+        const level1 = level1ByClient.get(result.clientId);
+        const level2 = level2ByClient.get(result.clientId);
+        return level1 && level2 ? compareAllocations(level1, level2) : undefined;
+      });
+    } catch (err) {
+      if (err instanceof DomainError) {
+        return results.map(() => undefined);
+      }
       throw err;
     }
   }

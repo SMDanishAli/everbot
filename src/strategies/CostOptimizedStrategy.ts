@@ -1,4 +1,4 @@
-import { Robot } from '../domain/entities/Robot';
+import { Robot, RobotSource } from '../domain/entities/Robot';
 import { ClientRequest } from '../domain/entities/ClientRequest';
 import { AllocationResult } from '../domain/entities/AllocationResult';
 import { IAllocationStrategy } from './IAllocationStrategy';
@@ -19,12 +19,27 @@ import { ZeroRobotsError, InsufficientCapacityError } from '../domain/errors';
  * DP only needs to decide "how many of this type", not "which specific one" —
  * that decision is applied afterwards by simply taking the first N instances
  * from that group.
- 
+
  */
 export class CostOptimizedStrategy implements IAllocationStrategy {
   readonly name = 'Cost Optimized (Level 2)';
 
   allocate(availableRobots: Robot[], request: ClientRequest): AllocationResult {
+    // Level 2 on its own has no standby-activation concept, so it must never
+    // draw from the standby pool even if handed a mixed pool. StandbyActivationStrategy
+    // (Level 3) reuses the same min-cost algorithm against a STANDBY-only pool
+    // via allocateFromPool below, bypassing this filter deliberately.
+    const activeRobots = availableRobots.filter((robot) => robot.source === RobotSource.ACTIVE);
+    return this.allocateFromPool(activeRobots, request);
+  }
+
+  /**
+   * Same min-cost knapsack as `allocate`, but operates on whatever pool it's
+   * given without filtering by source. Exists so StandbyActivationStrategy
+   * can cost-optimise the standby top-up (a STANDBY-only pool) without being
+   * short-circuited by the ACTIVE-only filter in `allocate`.
+   */
+  allocateFromPool(availableRobots: Robot[], request: ClientRequest): AllocationResult {
     if (availableRobots.length === 0) {
       throw new ZeroRobotsError();
     }

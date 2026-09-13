@@ -176,7 +176,7 @@ export async function runSession(): Promise<void> {
   const availableRobots = inventory.reduce((total, entry) => total + entry.available, 0);
   if (availableRobots === 0) {
     console.error(
-      'Inventory is empty. Add inventory entries to config.yaml before starting a session.',
+      'No robots available for assignment',
     );
     db.close();
     return;
