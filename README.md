@@ -112,7 +112,7 @@ becomes a failing test, then the minimum code to pass it. Infrastructure
 bugs, not just unit-level correctness.
 - Robot types and inventory can be changed in `config.yaml` without changing code.
 - Allocation rules are kept separate from the database, making the application easier to test and maintain.
-- Level 1 and 2 algorithms are based on bounded knapsack (polynomial complexity) instead of cartesian / bruteforce (exponential complexity); this allows the application to scale well if we added more reobot types in the future.
+- Level 1 and 2 algorithms are based on bounded knapsack (polynomial complexity) instead of cartesian / bruteforce (exponential complexity); this allows the application to scale well if more robot types are added.
 - `tsconfig.json` follows strict rules for code hygiene
 - Allocation is persisted in sqlite database with concurrency across terminal sessions (caveats are mentioned in Assumptions section below)
 - Fair use of object-oriented & solid principles:
