@@ -1,4 +1,5 @@
 import { ClientRequest } from '../domain/entities/ClientRequest';
+import { DomainError } from '../domain/errors';
 import { AllocationService } from '../services/AllocationService';
 import { IAllocationStrategy } from '../strategies/IAllocationStrategy';
 import { AssignmentFormatter } from './formatters/AssignmentFormatter';
@@ -38,7 +39,8 @@ export class CliController {
       requests = ClientHoursParser.parse(rawHours);
     } catch (err) {
       // Not yet reached AllocationService, so this is the only place this error is logged.
-      this.logger.warn('Invalid CLI input', { err, rawHours });
+      const { code, message } = err instanceof DomainError ? err : { code: undefined, message: String(err) };
+      this.logger.error('Invalid CLI input', { code, message, rawHours });
       console.error(ErrorFormatter.format(err));
       return;
     }
