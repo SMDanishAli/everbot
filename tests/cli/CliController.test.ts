@@ -115,6 +115,40 @@ describe('CliController', () => {
     expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Level 1 vs Level 2'));
   });
 
+  it('defaults the multi-client comparison target to the comparison strategy when none is given', async () => {
+    const results = [
+      new AllocationResult('client-1', 12, [new Robot(bravo)]),
+      new AllocationResult('client-2', 4, [new Robot(bravo)]),
+    ];
+    service.allocateManyWithComparison.mockResolvedValue({ results, comparisons: [] });
+    (prompt as jest.Mock).mockResolvedValue('12, 4');
+    const comparisonStrategy: IAllocationStrategy = { name: 'L1', allocate: jest.fn() };
+
+    await controller.run(strategy, strategy, comparisonStrategy);
+
+    expect(service.allocateManyWithComparison).toHaveBeenCalledWith(
+      strategy,
+      comparisonStrategy,
+      comparisonStrategy,
+      expect.anything(),
+    );
+  });
+
+  it('colors the multi-client notice in a TTY', async () => {
+    Object.defineProperty(process.stdout, 'isTTY', { configurable: true, value: true });
+    const results = [
+      new AllocationResult('client-1', 12, [new Robot(bravo)]),
+      new AllocationResult('client-2', 4, [new Robot(bravo)]),
+    ];
+    service.allocateMany.mockResolvedValue(results);
+    (prompt as jest.Mock).mockResolvedValue('12, 4');
+
+    await controller.run(strategy, strategy);
+
+    expect(console.log).toHaveBeenCalledWith(expect.stringContaining('\x1b[33m'));
+    Object.defineProperty(process.stdout, 'isTTY', { configurable: true, value: false });
+  });
+
   it('allocates space-separated clients as a shared multi-client request', async () => {
     const results = [
       new AllocationResult('client-1', 12, [new Robot(bravo)]),

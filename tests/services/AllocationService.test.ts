@@ -131,6 +131,62 @@ describe('AllocationService', () => {
     expect(historyRepository.save).toHaveBeenCalledWith(outcome.result, 'L3');
   });
 
+  it('marks Level 2 as cheaper when its cost is lower than Level 1', async () => {
+    const expensiveRobot = new Robot(new RobotType('Delta', 8, 4));
+    const categoryStrategy: IAllocationStrategy = {
+      name: 'L1',
+      allocate: jest.fn().mockReturnValue(new AllocationResult('client-1', 3, [expensiveRobot])),
+    };
+    const optimizedStrategy: IAllocationStrategy = {
+      name: 'L2',
+      allocate: jest.fn().mockReturnValue(new AllocationResult('client-1', 3, [robot])),
+    };
+
+    const outcome = await service().allocateWithComparison(optimizedStrategy, categoryStrategy, request);
+
+    expect(outcome.comparison?.cheaper).toBe('costOptimized');
+    expect(outcome.comparison?.costDifference).toBe(2);
+  });
+
+  it('marks Level 1 as cheaper when its cost is lower than Level 2', async () => {
+    const expensiveRobot = new Robot(new RobotType('Delta', 8, 4));
+    const categoryStrategy: IAllocationStrategy = {
+      name: 'L1',
+      allocate: jest.fn().mockReturnValue(new AllocationResult('client-1', 3, [robot])),
+    };
+    const optimizedStrategy: IAllocationStrategy = {
+      name: 'L2',
+      allocate: jest.fn().mockReturnValue(new AllocationResult('client-1', 3, [expensiveRobot])),
+    };
+
+    const outcome = await service().allocateWithComparison(optimizedStrategy, categoryStrategy, request);
+
+    expect(outcome.comparison?.cheaper).toBe('categoryDistribution');
+    expect(outcome.comparison?.costDifference).toBe(2);
+  });
+
+  it('computes the comparison target separately when it differs from the primary strategy', async () => {
+    const categoryStrategy: IAllocationStrategy = {
+      name: 'L1',
+      allocate: jest.fn().mockReturnValue(new AllocationResult('client-1', 3, [robot])),
+    };
+    const optimizedStrategy: IAllocationStrategy = {
+      name: 'L2',
+      allocate: jest.fn().mockReturnValue(new AllocationResult('client-1', 3, [robot])),
+    };
+    const standbyStrategy: IAllocationStrategy = {
+      name: 'L3',
+      allocate: jest.fn().mockReturnValue(new AllocationResult('client-1', 3, [robot])),
+    };
+
+    await service().allocateWithComparison(standbyStrategy, categoryStrategy, request, optimizedStrategy);
+
+    // comparisonTargetStrategy (optimizedStrategy) differs from the primary
+    // strategy (standbyStrategy), so it must be allocated separately rather
+    // than reusing the primary result.
+    expect(optimizedStrategy.allocate).toHaveBeenCalledWith([robot], request);
+  });
+
   it('still rethrows unexpected (non-domain) errors raised by a comparison strategy', async () => {
     const systemError = new Error('comparison strategy crashed');
     const categoryStrategy: IAllocationStrategy = {
@@ -241,6 +297,65 @@ describe('AllocationService', () => {
     expect(allocation.comparisons).toEqual([undefined, undefined]);
     expect(reservationRepository.allocate).toHaveBeenCalledTimes(1);
     expect(historyRepository.save).toHaveBeenCalledTimes(2);
+  });
+
+  it('reports no comparison for a result whose client id is missing from a comparison batch', async () => {
+    const categoryStrategy: IAllocationStrategy = {
+      name: 'L1',
+      allocate: jest.fn().mockReturnValue(new AllocationResult('mismatched-id', 3, [robot])),
+    };
+    const optimizedStrategy: IAllocationStrategy = {
+      name: 'L2',
+      allocate: jest.fn().mockReturnValue(new AllocationResult('client-1', 3, [robot])),
+    };
+
+    const allocation = await service().allocateManyWithComparison(
+      strategy,
+      categoryStrategy,
+      optimizedStrategy,
+      [request],
+    );
+
+    expect(allocation.comparisons).toEqual([undefined]);
+  });
+
+  it('rethrows unexpected (non-domain) errors raised by a multi-client comparison batch', async () => {
+    const systemError = new Error('comparison batch crashed');
+    const categoryStrategy: IAllocationStrategy = {
+      name: 'L1',
+      allocate: jest.fn().mockImplementation(() => {
+        throw systemError;
+      }),
+    };
+    const optimizedStrategy: IAllocationStrategy = {
+      name: 'L2',
+      allocate: jest.fn().mockReturnValue(new AllocationResult('client-1', 3, [robot])),
+    };
+
+    await expect(
+      service().allocateManyWithComparison(strategy, categoryStrategy, optimizedStrategy, [request]),
+    ).rejects.toBe(systemError);
+
+    expect(logger.error).toHaveBeenCalledWith('Multi-client allocation failed (system error)', {
+      err: systemError,
+    });
+  });
+
+  it('logs and rethrows when the primary multi-client strategy itself fails', async () => {
+    const error = new Error('primary strategy crashed');
+    strategy.allocate = jest.fn().mockImplementation(() => {
+      throw error;
+    });
+    const categoryStrategy: IAllocationStrategy = { name: 'L1', allocate: jest.fn() };
+    const optimizedStrategy: IAllocationStrategy = { name: 'L2', allocate: jest.fn() };
+
+    await expect(
+      service().allocateManyWithComparison(strategy, categoryStrategy, optimizedStrategy, [request]),
+    ).rejects.toBe(error);
+
+    expect(logger.error).toHaveBeenCalledWith('Multi-client allocation failed (system error)', {
+      err: error,
+    });
   });
 
   it('logs multi-client failures and rethrows them', async () => {

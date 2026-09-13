@@ -280,9 +280,7 @@ describe('runSession CLI workflows', () => {
 
     await runSession();
 
-    expect(console.error).toHaveBeenCalledWith(
-      'Inventory is empty. Add inventory entries to config.yaml before starting a session.',
-    );
+    expect(console.error).toHaveBeenCalledWith('No robots available for assignment');
     expect(mockSelectPrompt).not.toHaveBeenCalled();
     expect(mockClose).toHaveBeenCalled();
   });

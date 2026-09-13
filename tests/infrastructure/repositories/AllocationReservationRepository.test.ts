@@ -22,4 +22,33 @@ describe('AllocationReservationRepository', () => {
       message: 'Robot allocation transaction failed',
     });
   });
+
+  it('resolves without error when every selection is within availability', async () => {
+    const provider: IInventoryProvider = {
+      getInventory: jest.fn(),
+      getAvailableInventory: jest.fn().mockResolvedValue([
+        { type: 'Bravo', source: RobotSource.ACTIVE, available: 2 },
+      ]),
+    };
+    const logger = new InMemoryLogger();
+    const repository = new AllocationReservationRepository(provider, logger);
+
+    await expect(
+      repository.allocate([{ type: 'Bravo', source: RobotSource.ACTIVE, count: 2 }]),
+    ).resolves.toBeUndefined();
+    expect(logger.entries).toHaveLength(0);
+  });
+
+  it('treats a type/source with no inventory row at all as zero available', async () => {
+    const provider: IInventoryProvider = {
+      getInventory: jest.fn(),
+      getAvailableInventory: jest.fn().mockResolvedValue([]),
+    };
+    const logger = new InMemoryLogger();
+    const repository = new AllocationReservationRepository(provider, logger);
+
+    await expect(
+      repository.allocate([{ type: 'Charlie', source: RobotSource.STANDBY, count: 1 }]),
+    ).rejects.toThrow('Requested 1 Charlie (STANDBY) robots but only 0 available.');
+  });
 });

@@ -1,5 +1,5 @@
 import { AllocationResult } from '../../../src/domain/entities/AllocationResult';
-import { Robot } from '../../../src/domain/entities/Robot';
+import { Robot, RobotSource } from '../../../src/domain/entities/Robot';
 import { RobotType } from '../../../src/domain/entities/RobotType';
 import { AssignmentFormatter } from '../../../src/cli/formatters/AssignmentFormatter';
 
@@ -16,7 +16,7 @@ describe('AssignmentFormatter', () => {
 
     const output = AssignmentFormatter.format(result, 'L1 - Category Distribution');
 
-    expect(output).toContain('=== Allocation Result ===');
+    expect(output).toContain('| Strategy');
     expect(output).toContain('L1 - Category Distribution');
     expect(output).toContain('Bravo (2), Delta (1)');
     expect(output).not.toContain('Excess hours');
@@ -51,6 +51,15 @@ describe('AssignmentFormatter', () => {
     expect(output).toContain(
       'Additional Standby Robots Required:\nBravo: 2 - cost $4\nor\nCharlie: 1 - cost $3\nor\nDelta: 1 - cost $4',
     );
+  });
+
+  it('formats multiple standby robot types alphabetically', () => {
+    const result = new AllocationResult('client-1', 10, [
+      new Robot(delta, RobotSource.STANDBY),
+      new Robot(bravo, RobotSource.STANDBY),
+    ]);
+
+    expect(AssignmentFormatter.format(result, 'Test strategy')).toContain('Bravo (1), Delta (1)');
   });
 
   it('omits the standby alternatives section when there are none', () => {

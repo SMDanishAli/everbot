@@ -61,4 +61,11 @@ describe('ConfigInventoryProvider', () => {
       { type: 'Bravo', source: RobotSource.STANDBY, available: 1 },
     ]);
   });
+
+  it('defaults to an empty inventory when none is provided', async () => {
+    const provider = new ConfigInventoryProvider(database);
+
+    expect(await provider.getInventory()).toEqual([]);
+    expect(await provider.getAvailableInventory()).toEqual([]);
+  });
 });
