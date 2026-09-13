@@ -55,7 +55,12 @@ export class AssignmentFormatter {
           '',
           'Additional Standby Robots Required:',
           result.standbyAlternatives
-            .map((option) => `${option.type}: ${option.count} - cost $${option.cost}`)
+            .map((option) => {
+              const breakdown = option.breakdown
+                .map(({ type, count }) => `${type}: ${count}`)
+                .join(', ');
+              return `${breakdown} - cost $${option.cost}`;
+            })
             .join('\nor\n'),
         ]
       : [];

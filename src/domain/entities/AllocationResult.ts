@@ -1,9 +1,12 @@
 import { Robot } from './Robot';
 
-/** A standalone (single robot-type) way to cover a standby shortfall, and its cost. */
+/**
+ * A distinct way to cover a standby shortfall from one or more robot
+ * categories, and its total cost. May span multiple categories when no
+ * single one has enough units to cover the shortfall alone.
+ */
 export interface StandbyOption {
-  type: string;
-  count: number;
+  breakdown: Array<{ type: string; count: number }>;
   cost: number;
 }
 

@@ -54,11 +54,11 @@ describe('StandbyActivationStrategy', () => {
     const result = strategy.allocate([...activePool(), ...standbyPool()], new ClientRequest(21));
 
     // Shortfall = 5h. Bravo needs 2 (2*3=6h >= 5h, $4); Charlie needs 1 (5h, $3);
-    // Delta needs 1 (8h, $4) — all three are listed, sorted alphabetically.
+    // Delta needs 1 (8h, $4) — all three are listed (cheapest first).
     expect(result.standbyAlternatives).toEqual([
-      { type: 'Bravo', count: 2, cost: 4 },
-      { type: 'Charlie', count: 1, cost: 3 },
-      { type: 'Delta', count: 1, cost: 4 },
+      { breakdown: [{ type: 'Charlie', count: 1 }], cost: 3 },
+      { breakdown: [{ type: 'Bravo', count: 2 }], cost: 4 },
+      { breakdown: [{ type: 'Delta', count: 1 }], cost: 4 },
     ]);
   });
 
@@ -74,9 +74,43 @@ describe('StandbyActivationStrategy', () => {
     const result = strategy.allocate([...activePool(), ...limitedStandby], new ClientRequest(21));
 
     expect(result.standbyAlternatives).toEqual([
-      { type: 'Charlie', count: 1, cost: 3 },
-      { type: 'Delta', count: 1, cost: 4 },
+      { breakdown: [{ type: 'Charlie', count: 1 }], cost: 3 },
+      { breakdown: [{ type: 'Delta', count: 1 }], cost: 4 },
     ]);
+  });
+
+  it('falls back to a multi-category combination when no single category can cover the shortfall alone', () => {
+    // Regression test: with a large shortfall, no single standby category has
+    // enough units to cover it alone, but the app still legitimately combines
+    // categories to fulfil it — the breakdown list must not come back empty.
+    const strategy = new StandbyActivationStrategy(new CategoryDistributionStrategy());
+    // 1 active Bravo (3h) only; shortfall against a 21h request = 18h.
+    // Standby: Bravo:2 (6h max), Charlie:2 (10h max), Delta:2 (16h max) —
+    // no single category reaches 18h alone.
+    const scarceActive = [new Robot(bravo, RobotSource.ACTIVE)];
+    const richStandby = [
+      new Robot(bravo, RobotSource.STANDBY),
+      new Robot(bravo, RobotSource.STANDBY),
+      new Robot(charlie, RobotSource.STANDBY),
+      new Robot(charlie, RobotSource.STANDBY),
+      new Robot(delta, RobotSource.STANDBY),
+      new Robot(delta, RobotSource.STANDBY),
+    ];
+
+    const result = strategy.allocate([...scarceActive, ...richStandby], new ClientRequest(21));
+
+    expect(result.totalHoursProvided).toBe(21);
+    expect(result.standbyAlternatives.length).toBeGreaterThan(0);
+    // Every listed option must actually cover the 18h shortfall.
+    for (const option of result.standbyAlternatives) {
+      const hours = option.breakdown.reduce((sum, { type, count }) => {
+        const hoursPerRobot = { Bravo: 3, Charlie: 5, Delta: 8 }[type]!;
+        return sum + hoursPerRobot * count;
+      }, 0);
+      expect(hours).toBeGreaterThanOrEqual(18);
+    }
+    // No option should be a single category, since none can reach 18h alone.
+    expect(result.standbyAlternatives.every((option) => option.breakdown.length > 1)).toBe(true);
   });
 
   it('reports no standby alternatives when active capacity alone is sufficient', () => {

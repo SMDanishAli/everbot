@@ -40,9 +40,9 @@ describe('AssignmentFormatter', () => {
       21,
       [new Robot(bravo)],
       [
-        { type: 'Bravo', count: 2, cost: 4 },
-        { type: 'Charlie', count: 1, cost: 3 },
-        { type: 'Delta', count: 1, cost: 4 },
+        { breakdown: [{ type: 'Bravo', count: 2 }], cost: 4 },
+        { breakdown: [{ type: 'Charlie', count: 1 }], cost: 3 },
+        { breakdown: [{ type: 'Delta', count: 1 }], cost: 4 },
       ],
     );
 
@@ -51,6 +51,27 @@ describe('AssignmentFormatter', () => {
     expect(output).toContain(
       'Additional Standby Robots Required:\nBravo: 2 - cost $4\nor\nCharlie: 1 - cost $3\nor\nDelta: 1 - cost $4',
     );
+  });
+
+  it('formats a multi-category standby alternative on one line', () => {
+    const result = new AllocationResult(
+      'client-1',
+      21,
+      [new Robot(bravo)],
+      [
+        {
+          breakdown: [
+            { type: 'Charlie', count: 2 },
+            { type: 'Delta', count: 1 },
+          ],
+          cost: 10,
+        },
+      ],
+    );
+
+    const output = AssignmentFormatter.format(result, 'Test strategy');
+
+    expect(output).toContain('Additional Standby Robots Required:\nCharlie: 2, Delta: 1 - cost $10');
   });
 
   it('formats multiple standby robot types alphabetically', () => {
