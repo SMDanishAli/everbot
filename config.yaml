@@ -12,10 +12,10 @@ robots:
 inventory:
   - type: Bravo
     source: ACTIVE
-    count: 5
+    count: 1     # < 0 will throw error
   - type: Charlie
     source: ACTIVE
-    count: 4
+    count: 2
   - type: Delta
     source: ACTIVE
     count: 3
