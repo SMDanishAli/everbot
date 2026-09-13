@@ -12,13 +12,13 @@ robots:
 inventory:
   - type: Bravo
     source: ACTIVE
-    count: 1
+    count: 5
   - type: Charlie
     source: ACTIVE
-    count: 1
+    count: 4
   - type: Delta
     source: ACTIVE
-    count: 1
+    count: 3
   - type: Bravo
     source: STANDBY
     count: 2

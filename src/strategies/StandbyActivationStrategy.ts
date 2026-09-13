@@ -1,6 +1,6 @@
 import { Robot, RobotSource } from '../domain/entities/Robot';
 import { ClientRequest } from '../domain/entities/ClientRequest';
-import { AllocationResult } from '../domain/entities/AllocationResult';
+import { AllocationResult, StandbyOption } from '../domain/entities/AllocationResult';
 import { IAllocationStrategy } from './IAllocationStrategy';
 import { CostOptimizedStrategy } from './CostOptimizedStrategy';
 import { ZeroRobotsError, InsufficientCapacityError } from '../domain/errors';
@@ -66,7 +66,38 @@ export class StandbyActivationStrategy implements IAllocationStrategy {
     );
 
     const assignedRobots = [...activeRobots, ...standbySelection.assignedRobots];
+    const standbyAlternatives = this.findStandbyAlternatives(standbyRobots, shortfall);
 
-    return new AllocationResult(request.clientId, request.hoursRequested, assignedRobots);
+    return new AllocationResult(
+      request.clientId,
+      request.hoursRequested,
+      assignedRobots,
+      standbyAlternatives,
+    );
+  }
+
+  /**
+   * Every standalone (single robot-type) way to cover the shortfall from the
+   * standby pool, with its cost — spec: "Additional Standby Robots Required"
+   * should list each option (e.g. Bravo:2 or Delta:1 or Charlie:1), not just
+   * the cost-optimised one already reflected in the main allocation.
+   */
+  private findStandbyAlternatives(standbyRobots: Robot[], shortfall: number): StandbyOption[] {
+    const groups = new Map<string, Robot[]>();
+    for (const robot of standbyRobots) {
+      const group = groups.get(robot.type.name) ?? [];
+      group.push(robot);
+      groups.set(robot.type.name, group);
+    }
+
+    const options: StandbyOption[] = [];
+    for (const [type, group] of groups) {
+      const count = Math.ceil(shortfall / group[0].workingHours);
+      if (count <= group.length) {
+        options.push({ type, count, cost: count * group[0].chargingCost });
+      }
+    }
+
+    return options.sort((left, right) => left.type.localeCompare(right.type));
   }
 }

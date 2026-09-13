@@ -1,10 +1,18 @@
 import { Robot } from './Robot';
 
+/** A standalone (single robot-type) way to cover a standby shortfall, and its cost. */
+export interface StandbyOption {
+  type: string;
+  count: number;
+  cost: number;
+}
+
 export class AllocationResult {
   constructor(
     public readonly clientId: string,
     public readonly hoursRequested: number,
     public readonly assignedRobots: Robot[],
+    public readonly standbyAlternatives: StandbyOption[] = [],
   ) {}
 
   get totalHoursProvided(): number {

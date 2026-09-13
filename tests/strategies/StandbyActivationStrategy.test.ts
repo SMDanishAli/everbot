@@ -48,6 +48,45 @@ describe('StandbyActivationStrategy', () => {
     expect(usedStandby[0].type.name).toBe('Charlie');
   });
 
+  it('spec example: lists every standalone standby option and its cost, not just the chosen one', () => {
+    const strategy = new StandbyActivationStrategy(new CategoryDistributionStrategy());
+
+    const result = strategy.allocate([...activePool(), ...standbyPool()], new ClientRequest(21));
+
+    // Shortfall = 5h. Bravo needs 2 (2*3=6h >= 5h, $4); Charlie needs 1 (5h, $3);
+    // Delta needs 1 (8h, $4) — all three are listed, sorted alphabetically.
+    expect(result.standbyAlternatives).toEqual([
+      { type: 'Bravo', count: 2, cost: 4 },
+      { type: 'Charlie', count: 1, cost: 3 },
+      { type: 'Delta', count: 1, cost: 4 },
+    ]);
+  });
+
+  it('omits a standby option when there are not enough robots of that type to cover the shortfall alone', () => {
+    const strategy = new StandbyActivationStrategy(new CategoryDistributionStrategy());
+    // Only 1 Bravo in standby: 1 * 3h = 3h < 5h shortfall, so Bravo can't cover it alone.
+    const limitedStandby = [
+      new Robot(bravo, RobotSource.STANDBY),
+      new Robot(charlie, RobotSource.STANDBY),
+      new Robot(delta, RobotSource.STANDBY),
+    ];
+
+    const result = strategy.allocate([...activePool(), ...limitedStandby], new ClientRequest(21));
+
+    expect(result.standbyAlternatives).toEqual([
+      { type: 'Charlie', count: 1, cost: 3 },
+      { type: 'Delta', count: 1, cost: 4 },
+    ]);
+  });
+
+  it('reports no standby alternatives when active capacity alone is sufficient', () => {
+    const strategy = new StandbyActivationStrategy(new CategoryDistributionStrategy());
+
+    const result = strategy.allocate([...activePool(), ...standbyPool()], new ClientRequest(10));
+
+    expect(result.standbyAlternatives).toEqual([]);
+  });
+
   it('delegates entirely to the base strategy when active capacity is sufficient', () => {
     const baseStrategy = new CategoryDistributionStrategy();
     const strategy = new StandbyActivationStrategy(baseStrategy);

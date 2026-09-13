@@ -34,6 +34,33 @@ describe('AssignmentFormatter', () => {
     expect(AssignmentFormatter.format(result, 'Test strategy')).toContain('None');
   });
 
+  it('lists every standby alternative and its cost when present', () => {
+    const result = new AllocationResult(
+      'client-1',
+      21,
+      [new Robot(bravo)],
+      [
+        { type: 'Bravo', count: 2, cost: 4 },
+        { type: 'Charlie', count: 1, cost: 3 },
+        { type: 'Delta', count: 1, cost: 4 },
+      ],
+    );
+
+    const output = AssignmentFormatter.format(result, 'Test strategy');
+
+    expect(output).toContain(
+      'Additional Standby Robots Required:\nBravo: 2 - cost $4\nor\nCharlie: 1 - cost $3\nor\nDelta: 1 - cost $4',
+    );
+  });
+
+  it('omits the standby alternatives section when there are none', () => {
+    const result = new AllocationResult('client-1', 10, [new Robot(delta), new Robot(bravo)]);
+
+    expect(AssignmentFormatter.format(result, 'Test strategy')).not.toContain(
+      'Additional Standby Robots Required',
+    );
+  });
+
   it('adds colors to highlighted values in a TTY', () => {
     Object.defineProperty(process.stdout, 'isTTY', { configurable: true, value: true });
     const result = new AllocationResult('client-1', 10, [new Robot(delta), new Robot(bravo)]);

@@ -50,12 +50,23 @@ export class AssignmentFormatter {
     const row = ([label, value, colorName]: string[]): string =>
       `| ${label.padEnd(labelWidth)} | ${color(value.padEnd(valueWidth), colorName)} |`;
 
+    const standbyOptions = result.standbyAlternatives.length > 0
+      ? [
+          '',
+          'Additional Standby Robots Required:',
+          result.standbyAlternatives
+            .map((option) => `${option.type}: ${option.count} - cost $${option.cost}`)
+            .join('\nor\n'),
+        ]
+      : [];
+
     return [
       separator,
       row(rows[0]),
       separator,
       ...rows.slice(1).map(row),
       separator,
+      ...standbyOptions,
     ].join('\n');
   }
 }
