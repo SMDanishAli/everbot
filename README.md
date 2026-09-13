@@ -112,14 +112,14 @@ becomes a failing test, then the minimum code to pass it. Infrastructure
 bugs, not just unit-level correctness.
 - Robot types and inventory can be changed in `config.yaml` without changing code.
 - Allocation rules are kept separate from the database, making the application easier to test and maintain.
-- Level 1 and 2 algorithms use polynomial complexity instead of exponential - this will scale well even after adding more robot types.
+- Level 1 and 2 algorithms are based on bounded knapsack (polynomial complexity) instead of cartesian / bruteforce (exponential complexity); this allows the application to scale well if we added more reobot types in the future.
 - `tsconfig.json` follows strict rules for code hygiene
-- Allocation is persisted in sqlite database with concurrency across terminal sessions (Refer to Assumptions section below for more info)
+- Allocation is persisted in sqlite database with concurrency across terminal sessions (caveats are mentioned in Assumptions section below)
 - Fair use of object-oriented & solid principles:
   1. *Single responsiblity* - each section of the code does only its own job without side effects
   2. *Configurable* - Robots property and inventory can be updated by changing `config.yaml` without touching code
   3. *Extensible* - new strategies can be added or updated without having to change allocation service or cli controllers. sqlite db migration is also supported
-- It is ensure to keep functions and classes as reusable as possible without adding extra complexities.
+- It is ensured to keep functions and classes as reusable as possible without adding extra complexities.
 - All logs are persisted in *logs* folder for debugging
 
 **Patterns:**
@@ -129,7 +129,7 @@ bugs, not just unit-level correctness.
 - *Repository* — all persistence (inventory, reservations, history) sits
   behind interfaces so SQLite can be swapped or mocked in tests.
 
-## Design Decisions
+## Code Structure
 
 The project is split into simple areas:
 
@@ -150,7 +150,6 @@ src/
 │   └── formatters/                   # terminal output
 ├── parsers/                          # To parse and validate CLI inputs
 │   ├── ClientHoursParser.ts
-│   └── InputValidator.ts
 ├── services/
 │   ├── AllocationService.ts          # Run the given strategy & persist the result
 │   ├── InventoryService.ts           # Get available resources
@@ -171,17 +170,29 @@ src/
     └── repositories/                   # Inventory and allocation persistence
 ```
 
-### Assumptions
+## Assumptions / Trade-offs considered
 
-- 1. Robot availability constraints follow the daily allocation quota. This mean the robots availability will be reset at midnight. We do not cater for the working duration of the robot as it is beyond the scope (as per the spec document). If a robot starts work at 11 pm, it will be reset at 12am eventhough it has work duration of 3 hours
-- 2. The allocation history is persisted in the sqlite database which is stateless and file-based. The application is asssumed to be run on a single-host machine (Not in centralized / file-sharing system).
-- 3. The configured inventory is loaded in memory, while allocation history is
+  1. Robot availability constraints follow the daily allocation quota. This mean the robots availability will be reset at midnight. We do not cater for the working duration of the robot as it is beyond the scope (as per the spec document). If a robot starts work at 11 pm, it will be reset at 12am eventhough it has work duration of 3 hours
+  2. The allocation history is persisted in the sqlite database which is stateless and file-based. The application is asssumed to be run on a single-host machine (Not in centralized / file-sharing system).
+  3. The configured inventory is loaded in memory, while allocation history is
   stored in SQLite. Each allocation re-reads the day's history and uses an
   immediate SQLite transaction for the final capacity check and history write.
-- 4. For multi-client input, L3 (Standby Activation Strategy) is always used implicitly which internally uses cost-optimised strategy. The CLI prints this in yellow color clearly.
+  4. Users don't have to choose L4 (multi-client) strategy explicitly - it is always used implicitly when multiple values are provided. Internally, it will use L3 + L2 (cost optimised strategy including standby-robots) even if users pick L1. There is a console log in yellow to which mentions that your strategy has been overriden due to multi-client input.
 
+## Potential areas of improvement
 
-### Using as packaged release (experimental)
+  1. Send email alerts when there are any fatal errors
+  2. Add `persist: true` in config.yaml - if false, sqlite will not be used and allocation will only stay in-memory. This can be useful for testing done during development.
+  3. Save total cost and utilization stats in the db - this can be used for graphical analysis against time periods
+  4. Currently, CI only runs on new tag (i.e. new release). I did it on purpose since I am using github shared runners. In an actual environment where multiple contributors use different branches, the test stage should run on every major commit.
+
+## AI Usage
+
+- Claude and GitHub Copilot
+- Claude was used for initial project planning and scaffolding
+- Copilot was used for code generation within VS code
+
+## Using as packaged release (experimental)
 
 *Note:* Since we are using shared github runners, packaged release may fail or stay stuck. 
 
