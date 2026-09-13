@@ -219,9 +219,13 @@ describe('CliController', () => {
 
     expect(service.allocate).not.toHaveBeenCalled();
     expect(service.allocateMany).not.toHaveBeenCalled();
-    expect(logger.warn).toHaveBeenCalledWith(
+    expect(logger.error).toHaveBeenCalledWith(
       'Invalid CLI input',
-      expect.objectContaining({ rawHours: '0' }),
+      expect.objectContaining({
+        code: 'INVALID_INPUT',
+        message: 'Client 1 work hours must be a positive integer.',
+        rawHours: '0',
+      }),
     );
     expect(console.error).toHaveBeenCalledWith(
       'Error: Client 1 work hours must be a positive integer.',
