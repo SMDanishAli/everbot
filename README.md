@@ -177,7 +177,7 @@ src/
   3. The configured inventory is loaded in memory, while allocation history is
   stored in SQLite. Each allocation re-reads the day's history and uses an
   immediate SQLite transaction for the final capacity check and history write.
-  4. Users don't have to choose L4 (multi-client) strategy explicitly - it is always used implicitly when multiple values are provided. Internally, it will use L3 + L2 (cost optimised strategy including standby-robots) even if users pick L1. There is a console log in yellow to which mentions that your strategy has been overriden due to multi-client input.
+  4. Users don't have to choose L4 (multi-client) strategy explicitly - it is always used implicitly when multiple values are provided. Internally, it will use L3 + L2 (cost optimised strategy including standby-robots) even if users pick L1. There is a yellow log which clearly mentions that your strategy has been overriden due to multi-client input.
 
 ## Potential areas of improvement
 
