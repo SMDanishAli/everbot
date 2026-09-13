@@ -172,12 +172,13 @@ src/
 
 ## Assumptions / Trade-offs considered
 
-  1. Robot availability constraints follow the daily allocation quota. This mean the robots availability will be reset at midnight. We do not cater for the working duration of the robot as it is beyond the scope (as per the spec document). If a robot starts work at 11 pm, it will be reset at 12am eventhough it has work duration of 3 hours
-  2. The allocation history is persisted in the sqlite database which is stateless and file-based. The application is asssumed to be run on a single-host machine (Not in centralized / file-sharing system).
-  3. The configured inventory is loaded in memory, while allocation history is
+  1. The _Impossible Allocation_ error has not been implemented due to ambiguity - the example message seems to be contradict L1 logic which does not enforce any hard restriction like this (Discussion required)
+  2. Robot availability constraints follow the daily allocation quota. This mean the robots availability will be reset at midnight. We do not cater for the working duration of the robot as it is beyond the scope (as per the spec document). If a robot starts work at 11 pm, it will be reset at 12am eventhough it has work duration of 3 hours
+  3. The allocation history is persisted in the sqlite database which is stateless and file-based. The application is asssumed to be run on a single-host machine (Not in centralized / file-sharing system).
+  4. The configured inventory is loaded in memory, while allocation history is
   stored in SQLite. Each allocation re-reads the day's history and uses an
   immediate SQLite transaction for the final capacity check and history write.
-  4. Users don't have to choose L4 (multi-client) strategy explicitly - it is always used implicitly when multiple values are provided. Internally, it will use L3 + L2 (cost optimised strategy including standby-robots) even if users pick L1. There is a yellow log which clearly mentions that your strategy has been overriden due to multi-client input.
+  5. Users don't have to choose L4 (multi-client) strategy explicitly - it is always used implicitly when multiple values are provided. Internally, it will use L3 + L2 (cost optimised strategy including standby-robots) even if users pick L1. There is a yellow log which clearly mentions that your strategy has been overriden due to multi-client input.
 
 ## Potential areas of improvement
 
