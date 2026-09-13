@@ -190,7 +190,7 @@ src/
 
 - Claude and GitHub Copilot
 - Claude was used for initial project planning and scaffolding
-- Copilot was used for code generation within VS code
+- Copilot was used for code generation & verification within VS code
 
 ## Using as packaged release (experimental)
 
